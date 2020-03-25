@@ -1,0 +1,5 @@
+﻿  Building Custom Rule C:/Users/krzys/Desktop/VulkanSDSZ/Library/vendor/GLFW/tests/CMakeLists.txt
+  triangle-vulkan.c
+  glad_vulkan.c
+  Generowanie kodu...
+  triangle-vulkan.vcxproj -> C:\Users\krzys\Desktop\VulkanSDSZ\Library\vendor\GLFW\build\tests\Release\triangle-vulkan.exe

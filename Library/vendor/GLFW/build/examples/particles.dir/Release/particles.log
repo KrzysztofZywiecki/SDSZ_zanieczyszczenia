@@ -1,0 +1,7 @@
+﻿  Building Custom Rule C:/Users/krzys/Desktop/VulkanSDSZ/Library/vendor/GLFW/examples/CMakeLists.txt
+  particles.c
+  tinycthread.c
+  getopt.c
+  glad_gl.c
+  Generowanie kodu...
+  particles.vcxproj -> C:\Users\krzys\Desktop\VulkanSDSZ\Library\vendor\GLFW\build\examples\Release\particles.exe

@@ -1,0 +1,14 @@
+Determining if the include file pthread.h exists failed with the following output:
+Change Dir: C:/Users/krzys/Desktop/VulkanSDSZ/Library/vendor/GLFW/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_95319.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R) Build Engine 16.3.2+e481bbf88 dla platformy .NET Framework
+Copyright (C) Microsoft Corporation. Wszelkie prawa zastrzeżone.
+
+  Microsoft (R) C/C++ wersja kompilatora optymalizującego 19.23.28106.4 dla x64
+  Copyright (C) Microsoft Corporation. Wszystkie prawa zastrzeżone.
+  CheckIncludeFile.c
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_95319.dir\Debug\\" /Fd"cmTC_95319.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue C:\Users\krzys\Desktop\VulkanSDSZ\Library\vendor\GLFW\build\CMakeFiles\CMakeTmp\CheckIncludeFile.c
+C:\Users\krzys\Desktop\VulkanSDSZ\Library\vendor\GLFW\build\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Nie można otworzyć pliku dołącz: 'pthread.h': No such file or directory [C:\Users\krzys\Desktop\VulkanSDSZ\Library\vendor\GLFW\build\CMakeFiles\CMakeTmp\cmTC_95319.vcxproj]
+
+
+
