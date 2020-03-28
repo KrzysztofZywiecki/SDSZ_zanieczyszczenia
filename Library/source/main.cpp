@@ -1,10 +1,12 @@
-#include <iostream>
-#include "file.h"
-#define GLFW_INCLUDE_VULKAN
-#include "GLFW/glfw3.h"
+#include "Application.h"
+
+extern Library::Application* Library::CreateApplication();
 
 int main()
 {
-	std::cout<<"Hello";
+	Library::Application* app = Library::CreateApplication();
+	app->Run();
+	delete app;
+
 	return 0;
 }
