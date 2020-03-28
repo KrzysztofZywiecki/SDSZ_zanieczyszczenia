@@ -2,7 +2,6 @@
 
 namespace Library
 {
-
     Layer:: Layer()
     {
 
@@ -12,5 +11,4 @@ namespace Library
     {
         
     }
-
 }

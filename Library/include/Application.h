@@ -1,5 +1,7 @@
 #pragma once
 #include "LayerStack.h"
+#include "Window.h"
+#include "Context.h"
 
 namespace Library
 {
@@ -11,6 +13,7 @@ namespace Library
 
             void Run();
         protected:
+            Window window;
             LayerStack layerStack;
     };
 

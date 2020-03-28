@@ -4,17 +4,21 @@ namespace Library
 {
     Application::Application()
     {
-
+        window.Init();
+        window.Create(800, 600, "Najlepsze okno");
+        Context::InitVulkan();
     }
 
     Application::~Application()
     {
-
+        Context::CleanUP();
+        window.Destroy();
+        window.Terminate();
     }
 
     void Application::Run()
     {
-        while(true)
+        while(!window.WindowShouldClose())
         {
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
@@ -24,7 +28,8 @@ namespace Library
             {
                 layer->Render();
             }
-            _sleep(100);
+            window.PollEvents();
+            _sleep(500);
         }
     }
 
