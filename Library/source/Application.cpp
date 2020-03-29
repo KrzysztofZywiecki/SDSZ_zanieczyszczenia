@@ -6,7 +6,7 @@ namespace Library
     {
         window.Init();
         window.Create(800, 600, "Najlepsze okno");
-        Context::InitVulkan(window.getWindowPtr());
+        Context::InitVulkan(&window);
     }
 
     Application::~Application()
