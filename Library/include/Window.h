@@ -17,6 +17,8 @@ namespace Library
             int getWidth() const    {return width;}
             int getHeight() const   {return height;}
 
+            GLFWwindow* getWindowPtr() {return window;}
+
         private:
             GLFWwindow* window;
             int width;
