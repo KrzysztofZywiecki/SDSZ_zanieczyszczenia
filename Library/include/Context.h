@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 namespace Library
 {
@@ -34,13 +35,18 @@ namespace Library
         static VkQueue commandQueue;
         static VkSwapchainKHR swapChain;
         static std::vector<VkImage> swapChainImages;
-        
+        static std::vector<VkImageView> swapChainImageViews;
+        static VkPipeline graphicsPipeline;
+        static VkPipelineLayout graphicsPipelineLayout;
+        static VkRenderPass renderPass;
+
         static uint32_t queueFamilyIndex;
         static VkFormat swapChainImageFormat;
         static VkExtent2D windowExtent;
 
         static std::vector<const char*> GetRequiredExtensions();
         static bool CheckValidationSupport();
+        static VkShaderModule CreateShaderModule(const char* path);
 
         static void CreateInstance();
         static void SetupDebugMessenger();
@@ -48,6 +54,11 @@ namespace Library
         static void PickPhysicalDevice();
         static void CreateDevice();
         static void CreateSwapChain(Window* window);
+        static void CreateSwapChainImageViews();
+        static void CreatePipelineLayout();
+        static void CreateRenderPass();
+        static void CreateFramebuffers();
+        static void CreateGraphicsPipeline();
     };
 
 }
