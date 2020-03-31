@@ -58,6 +58,11 @@ namespace Library
     VkSwapchainKHR              Context::swapChain;
     std::vector<VkImage>        Context::swapChainImages;
     std::vector<VkImageView>    Context::swapChainImageViews;
+    std::vector<VkFramebuffer>  Context::framebuffers;
+    VkCommandPool               Context::commandPool;
+    VkSemaphore                 Context::imageAcquiredSemaphore;
+    VkSemaphore                 Context::imageRenderedSemaphore;
+    std::vector<VkCommandBuffer> Context::commandBuffers;
 
     uint32_t                    Context::queueFamilyIndex;
     VkFormat                    Context::swapChainImageFormat;
@@ -77,13 +82,25 @@ namespace Library
         CreateSwapChainImageViews();
         CreatePipelineLayout();
         CreateRenderPass();
+        CreateFramebuffers();
         CreateGraphicsPipeline();
+        CreateCommandPool();
+        RecordCommandBuffers();
+        CreateSyncObjects();
     }
 
     void Context::CleanUP()
     {
+        vkDestroySemaphore(device, imageRenderedSemaphore, nullptr);
+        vkDestroySemaphore(device, imageAcquiredSemaphore, nullptr);
+        vkFreeCommandBuffers(device, commandPool, commandBuffers.size(), commandBuffers.data());
+        vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
+        for(auto framebuffer : framebuffers)
+        {
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
         vkDestroyRenderPass(device, renderPass, nullptr);
         for(auto imageView : swapChainImageViews)
         {
@@ -512,11 +529,21 @@ namespace Library
         subpass.pInputAttachments = nullptr;
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
+        VkSubpassDependency dependency = {};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+
         VkRenderPassCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         createInfo.subpassCount = 1;
         createInfo.attachmentCount = 1;
-        createInfo.dependencyCount = 0;
+        createInfo.dependencyCount = 1;
+        createInfo.pDependencies = &dependency;
         createInfo.pAttachments = &description;
         createInfo.pSubpasses = &subpass;
 
@@ -524,6 +551,29 @@ namespace Library
         {
             throw std::runtime_error("Failed to create render pass");
         }
+    }
+
+    void Context::CreateFramebuffers()
+    {
+        VkFramebufferCreateInfo framebufferInfo = {};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.layers = 1;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.width = windowExtent.width;
+        framebufferInfo.height = windowExtent.height;
+        framebufferInfo.renderPass = renderPass;
+
+        framebuffers.resize(swapChainImageViews.size());
+
+        for(uint32_t i = 0; i < swapChainImageViews.size(); i++)
+        {
+            framebufferInfo.pAttachments = swapChainImageViews.data() + i;
+            if(vkCreateFramebuffer(device, &framebufferInfo, nullptr, framebuffers.data() + i) != VK_SUCCESS)
+            {
+                throw std::runtime_error("Failed to create framebuffer");
+            }
+        }
+
     }
 
     void Context::CreateGraphicsPipeline()
@@ -599,8 +649,8 @@ namespace Library
         VkViewport viewport;
         viewport.x = 0;
         viewport.y = 0;
-        viewport.width = windowExtent.width;
-        viewport.height = windowExtent.height;
+        viewport.width = (float)windowExtent.width;
+        viewport.height = (float)windowExtent.height;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
@@ -640,6 +690,102 @@ namespace Library
         }
         vkDestroyShaderModule(device, vertexShader, nullptr);
         vkDestroyShaderModule(device, fragmentShader, nullptr);
+    }
+
+    void Context::CreateCommandPool()
+    {
+        VkCommandPoolCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        createInfo.queueFamilyIndex = queueFamilyIndex;
+        if(vkCreateCommandPool(device, &createInfo, nullptr, &commandPool) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create command pool");
+        }
+    }
+
+    void Context::RecordCommandBuffers()
+    {
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandBufferCount = framebuffers.size();
+        allocInfo.commandPool = commandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        
+        commandBuffers.resize(framebuffers.size());
+
+        if(vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate command buffers");
+        }
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.pInheritanceInfo = nullptr;
+
+        VkClearValue clearColor = {0.0, 0.0, 0.0, 1.0};
+
+        VkRect2D renderArea = {};
+        renderArea.extent = windowExtent;
+        renderArea.offset = {0,0};
+
+        VkRenderPassBeginInfo passInfo = {};
+        passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        passInfo.renderPass = renderPass;
+        passInfo.pClearValues = &clearColor;
+        passInfo.clearValueCount = 1;
+        passInfo.renderArea = renderArea;
+
+        for(uint32_t i = 0; i < commandBuffers.size(); i++)
+        {
+            passInfo.framebuffer = framebuffers[i];
+
+            vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+            vkCmdBeginRenderPass(commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+            vkCmdEndRenderPass(commandBuffers[i]);
+            vkEndCommandBuffer(commandBuffers[i]);
+        }
+    }
+
+    void Context::CreateSyncObjects()
+    {
+        VkSemaphoreCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        vkCreateSemaphore(device, &createInfo, nullptr, &imageRenderedSemaphore);
+        vkCreateSemaphore(device, &createInfo, nullptr, &imageAcquiredSemaphore);
+    }
+
+    void Context::DoTheThing()
+    {
+        uint32_t index;
+        vkAcquireNextImageKHR(device, swapChain, UINT32_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &index);
+
+        VkPipelineStageFlags waitDstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = commandBuffers.data() + index;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &imageAcquiredSemaphore;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &imageRenderedSemaphore;
+        submitInfo.pWaitDstStageMask = &waitDstStage;
+
+        vkQueueSubmit(commandQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        
+        VkPresentInfoKHR presentInfo = {};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &imageRenderedSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &swapChain;
+        presentInfo.pImageIndices = &index;
+
+        vkQueuePresentKHR(commandQueue, &presentInfo);
+        vkDeviceWaitIdle(device);
     }
 
 }

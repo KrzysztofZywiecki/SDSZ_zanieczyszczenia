@@ -24,6 +24,8 @@ namespace Library
         static void InitVulkan(Window* window);
         static void CleanUP();
 
+        static void DoTheThing(); //For test ONLY, delete later
+
         static VkDevice device;
 
         private:
@@ -36,9 +38,14 @@ namespace Library
         static VkSwapchainKHR swapChain;
         static std::vector<VkImage> swapChainImages;
         static std::vector<VkImageView> swapChainImageViews;
+        static std::vector<VkFramebuffer> framebuffers;
         static VkPipeline graphicsPipeline;
         static VkPipelineLayout graphicsPipelineLayout;
         static VkRenderPass renderPass;
+        static VkCommandPool commandPool;
+        static VkSemaphore imageAcquiredSemaphore;
+        static VkSemaphore imageRenderedSemaphore;
+        static std::vector<VkCommandBuffer> commandBuffers;
 
         static uint32_t queueFamilyIndex;
         static VkFormat swapChainImageFormat;
@@ -59,6 +66,9 @@ namespace Library
         static void CreateRenderPass();
         static void CreateFramebuffers();
         static void CreateGraphicsPipeline();
+        static void CreateCommandPool();
+        static void RecordCommandBuffers();
+        static void CreateSyncObjects();
     };
 
 }

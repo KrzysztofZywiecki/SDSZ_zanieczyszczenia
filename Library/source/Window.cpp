@@ -32,6 +32,7 @@ namespace Library
 
     void Window::PollEvents()
     {
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 

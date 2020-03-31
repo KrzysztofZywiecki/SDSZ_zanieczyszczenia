@@ -20,6 +20,7 @@ namespace Library
     {
         while(!window.WindowShouldClose())
         {
+            Context::DoTheThing();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
                 (*iterator)->Update();
@@ -29,6 +30,7 @@ namespace Library
                 layer->Render();
             }
             window.PollEvents();
+            
             _sleep(500);
         }
     }
