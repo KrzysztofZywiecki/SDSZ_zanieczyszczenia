@@ -8,7 +8,7 @@ Mając stworzony projekt możemy skompilować pliki korzystając z naszego środ
 
 Po skompilowaniu projektu trzeba przekopiować folder "/Shaders" do folderu "/build/Application/Debug". Aplikacja nie zadziała poprawnie bez shaderów.
 
-#Notki co do edytowania
+# Notki co do edytowania
 
 Pliki możemy edytować korzystając z utworzonego projektu. Zapisane zmiany zostaną wpisane do edytowanych plików.
 Natomiast przy utworzeniu nowego pliku ten będzie tworzony w folderze "build" (nie to co chcemy). Trzeba go wtedy ręcznie przenosić do odpowiedniego folderu w /Application albo /Library.
