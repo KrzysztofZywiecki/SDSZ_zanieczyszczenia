@@ -2,11 +2,24 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "Window.h"
+#include "Device.h"
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+
+#ifndef EXT_LISTS
+#define EXT_LISTS
+    #ifdef NDEBUG
+        static bool validationEnabled = false;
+    #else
+        static bool validationEnabled = true;
+    #endif
+
+    static std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
+    static std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+#endif
 
 namespace Library
 {
@@ -26,15 +39,13 @@ namespace Library
 
         static void DoTheThing(); //For test ONLY, delete later
 
-        static VkDevice device;
+        static Device device;
 
         private:
         static VkDebugUtilsMessengerEXT debugMessenger;
         static VkInstance instance;
         static VkSurfaceKHR surface;
         static SwapChainSupportDetails capabilities;
-        static VkPhysicalDevice physicalDevice;
-        static VkQueue commandQueue;
         static VkSwapchainKHR swapChain;
         static std::vector<VkImage> swapChainImages;
         static std::vector<VkImageView> swapChainImageViews;
@@ -47,7 +58,6 @@ namespace Library
         static VkSemaphore imageRenderedSemaphore;
         static std::vector<VkCommandBuffer> commandBuffers;
 
-        static uint32_t queueFamilyIndex;
         static VkFormat swapChainImageFormat;
         static VkExtent2D windowExtent;
 
@@ -58,7 +68,7 @@ namespace Library
         static void CreateInstance();
         static void SetupDebugMessenger();
         static void CreateSurface(GLFWwindow* window);
-        static void PickPhysicalDevice();
+        static VkPhysicalDevice PickPhysicalDevice();
         static void CreateDevice();
         static void CreateSwapChain(Window* window);
         static void CreateSwapChainImageViews();
