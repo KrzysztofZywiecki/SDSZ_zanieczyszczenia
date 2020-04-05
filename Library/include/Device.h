@@ -53,7 +53,7 @@ namespace Library
 			void Destroy();
 
             Device();
-            Device(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface);
+            void Create(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface);
             ~Device();
         private:
     };

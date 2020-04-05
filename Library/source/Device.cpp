@@ -7,13 +7,12 @@ namespace Library
     {
     }
 
-    Device::Device(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface) 
-        : physicalDevice(physicalDevice)
+    void Device::Create(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface)
     {
+        this->physicalDevice = physicalDevice;
         indices = GetQueueFamilyIndices(physicalDevice, surface);
         std::set<uint32_t> uniqueIndices = {indices.graphicsFamily.value(), indices.computeFamily.value(), indices.presentFamily.value()};
         std::vector<VkDeviceQueueCreateInfo> queueInfos(uniqueIndices.size());
-
         uint32_t i = 0;
         for(auto index : uniqueIndices)
         {
@@ -52,10 +51,10 @@ namespace Library
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &queues.presentQueue);
     }
 
-	void Device::Destroy()
-	{
-		vkDestroyDevice(device, nullptr);
-	}
+    void Device::Destroy()
+    {
+        vkDestroyDevice(device, nullptr);
+    }
 
     Device::~Device()
     {

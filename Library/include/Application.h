@@ -14,6 +14,7 @@ namespace Library
             void Run();
         protected:
             Window window;
+            Context context;
             LayerStack layerStack;
     };
 

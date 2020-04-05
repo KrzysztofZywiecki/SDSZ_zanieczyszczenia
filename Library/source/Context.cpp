@@ -38,34 +38,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 
 namespace Library
 {
-    VkInstance                  Context::instance;
-    VkDebugUtilsMessengerEXT    Context::debugMessenger;
-    VkSurfaceKHR                Context::surface;
-    SwapChainSupportDetails     Context::capabilities;
-    VkSwapchainKHR              Context::swapChain;
-    std::vector<VkImage>        Context::swapChainImages;
-    std::vector<VkImageView>    Context::swapChainImageViews;
-    std::vector<VkFramebuffer>  Context::framebuffers;
-    VkCommandPool               Context::commandPool;
-    VkSemaphore                 Context::imageAcquiredSemaphore;
-    VkSemaphore                 Context::imageRenderedSemaphore;
-    std::vector<VkCommandBuffer> Context::commandBuffers;
-    Device                      Context::device;
-
-
-    VkFormat                    Context::swapChainImageFormat;
-    VkExtent2D                  Context::windowExtent;
-    VkPipeline                  Context::graphicsPipeline;
-    VkPipelineLayout            Context::graphicsPipelineLayout;
-    VkRenderPass                Context::renderPass;
-
     void Context::InitVulkan(Window* window)
     {
-        CreateInstance();
-        SetupDebugMessenger();
-        CreateSurface(window->getWindowPtr());
+        this-> window = window;
+        instance.Create(*window);
         VkPhysicalDevice physicalDevice = PickPhysicalDevice();
-        device = Device(physicalDevice, instance, surface);
+        device.Create(physicalDevice, instance.GetInstance(), instance.GetSurface());
         CreateSwapChain(window);
         CreateSwapChainImageViews();
         CreatePipelineLayout();
@@ -95,131 +73,20 @@ namespace Library
             vkDestroyImageView(device.device, imageView, nullptr);
         }
         vkDestroySwapchainKHR(device.device, swapChain, nullptr);
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        vkDestroyInstance(instance, nullptr);
-    }
-
-    void Context::CreateInstance()
-    {
-        VkApplicationInfo appInfo = {};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pEngineName = "Najlepszy silnik";
-        appInfo.pApplicationName = "Najlepsza aplikacja";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_MAKE_VERSION(1, 1, 0);
-
-        std::vector<const char*> extensions = GetRequiredExtensions();
-
-        VkInstanceCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pApplicationInfo = &appInfo;
-        createInfo.ppEnabledExtensionNames = extensions.data();
-        createInfo.enabledExtensionCount = extensions.size();
-
-        if(validationEnabled)
-        {
-            if(!CheckValidationSupport())
-            {
-                throw std::runtime_error("Layers requested, but not found");
-            }
-            createInfo.ppEnabledLayerNames = layers.data();
-            createInfo.enabledLayerCount = layers.size();
-        }
-        else
-        {
-            createInfo.ppEnabledLayerNames = nullptr;
-            createInfo.enabledLayerCount = 0;
-        }
-        
-        if(vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create Instance!");
-        }
-    }
-
-    std::vector<const char*> Context::GetRequiredExtensions()
-    {
-        std::vector<const char*> names;
-        uint32_t count;
-        const char** glfwExtensionNames = glfwGetRequiredInstanceExtensions(&count);
-        names.insert(names.end(), glfwExtensionNames, glfwExtensionNames + count);
-
-        if(validationEnabled)
-        {
-            names.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-        return names;
-    }
-
-    bool Context::CheckValidationSupport()
-    {
-        std::vector<VkLayerProperties> properties = {};
-        uint32_t propertyCount;
-        vkEnumerateInstanceLayerProperties(&propertyCount, nullptr);
-        properties.resize(propertyCount);
-        vkEnumerateInstanceLayerProperties(&propertyCount, properties.data());
-
-        for(auto layer : layers)
-        {
-            bool layerFound = false;
-            for(auto property : properties)
-            {
-                if(strcmp(layer, property.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if(!layerFound)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    void Context::SetupDebugMessenger()
-    {
-        if(!validationEnabled)
-        {
-            return;
-        }
-
-        VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-        createInfo.pfnUserCallback = (PFN_vkDebugUtilsMessengerCallbackEXT)DebugCallback;
-        createInfo.pUserData = nullptr;
-        CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger);
-    }
-
-    void Context::CreateSurface(GLFWwindow* window)
-    {
-        if(glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create window surface");
-        }
+        device.Destroy();
+        instance.Destroy();
     }
 
     VkPhysicalDevice Context::PickPhysicalDevice()
     {
         uint32_t count;
-        vkEnumeratePhysicalDevices(instance, &count, nullptr);
+        vkEnumeratePhysicalDevices(instance.GetInstance(), &count, nullptr);
         std::vector<VkPhysicalDevice> devices(count);
-        vkEnumeratePhysicalDevices(instance, &count, devices.data());
+        vkEnumeratePhysicalDevices(instance.GetInstance(), &count, devices.data());
         VkPhysicalDevice physicalDevice;
         for(auto device : devices)
         {
-            if(IsDeviceSuitable(device, surface) == 1000)
+            if(IsDeviceSuitable(device, instance.GetSurface()) == 1000)
             {
                 physicalDevice = device;
                 break;
@@ -294,13 +161,13 @@ namespace Library
 
     void Context::CreateSwapChain(Window* window)
     {
-		Context::capabilities = querySwapChainSupportDetails(device.physicalDevice, surface);
+		Context::capabilities = querySwapChainSupportDetails(device.physicalDevice, instance.GetSurface());
         VkSurfaceFormatKHR format = chooseFormat(capabilities.formats);
         VkExtent2D extent = chooseSwapChainExtent(capabilities.capabilities, window);
         
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface;
+        createInfo.surface = instance.GetSurface();
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.minImageCount = std::min(capabilities.capabilities.minImageCount + 1, capabilities.capabilities.maxImageCount);
         createInfo.imageFormat = format.format;
