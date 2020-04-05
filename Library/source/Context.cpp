@@ -1,49 +1,36 @@
 #include "Context.h"
 
-static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
-const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-VkAllocationCallbacks* pAllocator,
-VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if(func == nullptr)
-    {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-    else
-    {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-}
-
-static void DestroyDebugUtilsMessengerEXT(VkInstance instance,
-VkDebugUtilsMessengerEXT debugMessenger,
-VkAllocationCallbacks* pAllocator)
-{
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    func(instance, debugMessenger, pAllocator);
-}
-
-
-
-static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData)
-{
-    std::cerr<<"Validation Layer: "<<pCallbackData->pMessage<<std::endl;
-    return VK_FALSE;
-}
-
 namespace Library
 {
+    Context::Context()
+    {
+
+    }
+
     void Context::InitVulkan(Window* window)
     {
         this-> window = window;
         instance.Create(*window);
         VkPhysicalDevice physicalDevice = PickPhysicalDevice();
         device.Create(physicalDevice, instance.GetInstance(), instance.GetSurface());
+        
+        std::vector<float> vertices = {-0.5f, -0.5f, 0.0f,
+                                        0.5f, -0.5f, 0.0f,
+                                        0.5f, 0.5f, 0.0f,
+                                        -0.5f, 0.5f, 0.0f};
+        std::vector<float> colors = {1.0f, 0.0f, 0.0f,
+                                    0.0f, 1.0f, 0.0f,
+                                    0.0f, 0.0f, 1.0f,
+                                    1.0f, 1.0f, 1.0f};
+        std::vector<unsigned int> indices = {0, 1, 2, 0, 2, 3};
+
+        vertexBuffer = device.CreateBuffer(vertices.data(), vertices.size() * sizeof(float), 
+        DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        colorBuffer = device.CreateBuffer(colors.data(), colors.size() * sizeof(float), 
+        DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        indexBuffer = device.CreateBuffer(indices.data(), indices.size() * sizeof(unsigned int), DYNAMIC,
+        GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
         CreateSwapChain(window);
         CreateSwapChainImageViews();
         CreatePipelineLayout();
@@ -73,6 +60,9 @@ namespace Library
             vkDestroyImageView(device.device, imageView, nullptr);
         }
         vkDestroySwapchainKHR(device.device, swapChain, nullptr);
+        device.DestroyBuffer(vertexBuffer);
+        device.DestroyBuffer(colorBuffer);
+        device.DestroyBuffer(indexBuffer);
         device.Destroy();
         instance.Destroy();
     }
@@ -338,7 +328,6 @@ namespace Library
                 throw std::runtime_error("Failed to create framebuffer");
             }
         }
-
     }
 
     void Context::CreateGraphicsPipeline()
@@ -404,12 +393,36 @@ namespace Library
         rasterization.depthBiasClamp = 0.0f;
         rasterization.depthBiasSlopeFactor = 1.0f;
 
+        VkVertexInputBindingDescription positionDescription = {};
+        VkVertexInputBindingDescription colorDescription = {};
+        positionDescription.binding = 0;
+        positionDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        positionDescription.stride = 3*sizeof(float);
+
+        colorDescription.binding = 1;
+        colorDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        colorDescription.stride = 3*sizeof(float);
+
+        VkVertexInputAttributeDescription positionInput = {};
+        VkVertexInputAttributeDescription colorInput = {};
+        positionInput.offset = 0;
+        positionInput.location = 0;
+        positionInput.format = VK_FORMAT_R32G32B32_SFLOAT;
+        positionInput.binding = 0;
+        colorInput.offset = 0;
+        colorInput.location = 1;
+        colorInput.format = VK_FORMAT_R32G32B32_SFLOAT;
+        colorInput.binding = 1;
+
+        VkVertexInputAttributeDescription attributes[] = {positionInput, colorInput};
+        VkVertexInputBindingDescription bindings[] = {positionDescription, colorDescription};
+
         VkPipelineVertexInputStateCreateInfo vertexInput = {};
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInput.vertexAttributeDescriptionCount = 0;
-        vertexInput.vertexBindingDescriptionCount = 0;
-        vertexInput.pVertexAttributeDescriptions = nullptr;
-        vertexInput.pVertexBindingDescriptions = nullptr;
+        vertexInput.vertexAttributeDescriptionCount = 2;
+        vertexInput.vertexBindingDescriptionCount = 2;
+        vertexInput.pVertexAttributeDescriptions = attributes;
+        vertexInput.pVertexBindingDescriptions = bindings;
 
         VkViewport viewport;
         viewport.x = 0;
@@ -507,7 +520,12 @@ namespace Library
             vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
             vkCmdBeginRenderPass(commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+            
+            VkBuffer buffers[] = {vertexBuffer.buffer, colorBuffer.buffer};
+            VkDeviceSize offsets[] = {0, 0};
+            vkCmdBindVertexBuffers(commandBuffers[i], 0, 2, buffers, offsets);
+            vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(commandBuffers[i], 6, 1, 0, 0, 0);
             vkCmdEndRenderPass(commandBuffers[i]);
             vkEndCommandBuffer(commandBuffers[i]);
         }

@@ -10,18 +10,6 @@
 #include <iostream>
 #include <fstream>
 
-#ifndef EXT_LISTS
-#define EXT_LISTS
-    #ifdef NDEBUG
-        bool validationEnabled = false;
-    #else
-        bool validationEnabled = true;
-    #endif
-
-    std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
-    std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-#endif
-
 namespace Library
 {
 
@@ -35,22 +23,28 @@ namespace Library
     class Context
     {
         public:
+            Context();
             void InitVulkan(Window* window);
             void CleanUP();
 
             void DoTheThing(); //For test ONLY, delete later
+
 
         private:
             Window* window;
             Device device;
             Instance instance;
 
+            Buffer vertexBuffer;
+            Buffer indexBuffer;
+            Buffer colorBuffer;
+
             SwapChainSupportDetails capabilities;
             VkSwapchainKHR swapChain;
             std::vector<VkImage> swapChainImages;
             std::vector<VkImageView> swapChainImageViews;
             std::vector<VkFramebuffer> framebuffers;
-            VkPipeline graphicsPipeline;
+            VkPipeline graphicsPipeline = VK_NULL_HANDLE;
             VkPipelineLayout graphicsPipelineLayout;
             VkRenderPass renderPass;
             VkCommandPool commandPool;

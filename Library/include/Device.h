@@ -1,9 +1,12 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include "Buffer.h"
+#include <stdexcept>
 #include <vector>
 #include <optional>
 #include <set>
+
 
 #ifndef EXT_LISTS
 #define EXT_LISTS
@@ -41,7 +44,7 @@ namespace Library
 
     QueueFamilyIndices GetQueueFamilyIndices(VkPhysicalDevice device, VkSurfaceKHR surface);
     VkPhysicalDevice PickPhysicalDevice(std::vector<VkPhysicalDevice> devices);
-    
+
     class Device
     {
         public:
@@ -50,11 +53,14 @@ namespace Library
             Queues queues;
             VkPhysicalDevice physicalDevice;
             
+            Device();
+            ~Device();
+
+            void Create(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface);
 			void Destroy();
 
-            Device();
-            void Create(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface);
-            ~Device();
+            Buffer CreateBuffer(void* data, size_t size, MemoryUsage usageHint, Ownership owner, VkBufferUsageFlags usage);
+            void DestroyBuffer(Buffer& buffer);
         private:
     };
 
