@@ -1,0 +1,9 @@
+Linki do stron z których korzystaliśmy przy tworzeniu programu:
+
+*)https://pl.wikipedia.org/wiki/R%C3%B3wnania_Naviera-Stokesa
+*)https://en.wikipedia.org/wiki/Fluid_mechanics
+*)https://airpomerania.pl/files/106/139/219/emisja_trendy_wskazniki.pdf
+*)http://www.deltami.edu.pl/temat/matematyka/zastosowania/2014/11/27/Rownanie_Naviera_Stokesa/
+*)https://depot.ceon.pl/bitstream/handle/123456789/15434/ksi%C4%85%C5%BCka%20o%20zdrowiu.pdf?sequence=1&isAllowed=y
+*)http://www.najlepszestudia.pl/files/docs/instrukcja_lab_short.pdf
+*)http://www.proekors.pl/pub/instrukcje/Operat_FB.pdf
