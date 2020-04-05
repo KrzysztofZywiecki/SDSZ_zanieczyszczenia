@@ -1,71 +1,36 @@
 #include "Context.h"
 
-static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
-const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-VkAllocationCallbacks* pAllocator,
-VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if(func == nullptr)
-    {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-    else
-    {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-}
-
-static void DestroyDebugUtilsMessengerEXT(VkInstance instance,
-VkDebugUtilsMessengerEXT debugMessenger,
-VkAllocationCallbacks* pAllocator)
-{
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    func(instance, debugMessenger, pAllocator);
-}
-
-
-
-static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData)
-{
-    std::cerr<<"Validation Layer: "<<pCallbackData->pMessage<<std::endl;
-    return VK_FALSE;
-}
-
 namespace Library
 {
-    VkInstance                  Context::instance;
-    VkDebugUtilsMessengerEXT    Context::debugMessenger;
-    VkSurfaceKHR                Context::surface;
-    SwapChainSupportDetails     Context::capabilities;
-    VkSwapchainKHR              Context::swapChain;
-    std::vector<VkImage>        Context::swapChainImages;
-    std::vector<VkImageView>    Context::swapChainImageViews;
-    std::vector<VkFramebuffer>  Context::framebuffers;
-    VkCommandPool               Context::commandPool;
-    VkSemaphore                 Context::imageAcquiredSemaphore;
-    VkSemaphore                 Context::imageRenderedSemaphore;
-    std::vector<VkCommandBuffer> Context::commandBuffers;
-    Device                      Context::device;
+    Context::Context()
+    {
 
-
-    VkFormat                    Context::swapChainImageFormat;
-    VkExtent2D                  Context::windowExtent;
-    VkPipeline                  Context::graphicsPipeline;
-    VkPipelineLayout            Context::graphicsPipelineLayout;
-    VkRenderPass                Context::renderPass;
+    }
 
     void Context::InitVulkan(Window* window)
     {
-        CreateInstance();
-        SetupDebugMessenger();
-        CreateSurface(window->getWindowPtr());
+        this-> window = window;
+        instance.Create(*window);
         VkPhysicalDevice physicalDevice = PickPhysicalDevice();
-        device = Device(physicalDevice, instance, surface);
+        device.Create(physicalDevice, instance.GetInstance(), instance.GetSurface());
+        
+        std::vector<float> vertices = {-0.5f, -0.5f, 0.0f,
+                                        0.5f, -0.5f, 0.0f,
+                                        0.5f, 0.5f, 0.0f,
+                                        -0.5f, 0.5f, 0.0f};
+        std::vector<float> colors = {1.0f, 0.0f, 0.0f,
+                                    0.0f, 1.0f, 0.0f,
+                                    0.0f, 0.0f, 1.0f,
+                                    1.0f, 1.0f, 1.0f};
+        std::vector<unsigned int> indices = {0, 1, 2, 0, 2, 3};
+
+        vertexBuffer = device.CreateBuffer(vertices.data(), vertices.size() * sizeof(float), 
+        DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        colorBuffer = device.CreateBuffer(colors.data(), colors.size() * sizeof(float), 
+        DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        indexBuffer = device.CreateBuffer(indices.data(), indices.size() * sizeof(unsigned int), DYNAMIC,
+        GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
         CreateSwapChain(window);
         CreateSwapChainImageViews();
         CreatePipelineLayout();
@@ -95,131 +60,23 @@ namespace Library
             vkDestroyImageView(device.device, imageView, nullptr);
         }
         vkDestroySwapchainKHR(device.device, swapChain, nullptr);
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        vkDestroyInstance(instance, nullptr);
-    }
-
-    void Context::CreateInstance()
-    {
-        VkApplicationInfo appInfo = {};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pEngineName = "Najlepszy silnik";
-        appInfo.pApplicationName = "Najlepsza aplikacja";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_MAKE_VERSION(1, 1, 0);
-
-        std::vector<const char*> extensions = GetRequiredExtensions();
-
-        VkInstanceCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pApplicationInfo = &appInfo;
-        createInfo.ppEnabledExtensionNames = extensions.data();
-        createInfo.enabledExtensionCount = extensions.size();
-
-        if(validationEnabled)
-        {
-            if(!CheckValidationSupport())
-            {
-                throw std::runtime_error("Layers requested, but not found");
-            }
-            createInfo.ppEnabledLayerNames = layers.data();
-            createInfo.enabledLayerCount = layers.size();
-        }
-        else
-        {
-            createInfo.ppEnabledLayerNames = nullptr;
-            createInfo.enabledLayerCount = 0;
-        }
-        
-        if(vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create Instance!");
-        }
-    }
-
-    std::vector<const char*> Context::GetRequiredExtensions()
-    {
-        std::vector<const char*> names;
-        uint32_t count;
-        const char** glfwExtensionNames = glfwGetRequiredInstanceExtensions(&count);
-        names.insert(names.end(), glfwExtensionNames, glfwExtensionNames + count);
-
-        if(validationEnabled)
-        {
-            names.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-        return names;
-    }
-
-    bool Context::CheckValidationSupport()
-    {
-        std::vector<VkLayerProperties> properties = {};
-        uint32_t propertyCount;
-        vkEnumerateInstanceLayerProperties(&propertyCount, nullptr);
-        properties.resize(propertyCount);
-        vkEnumerateInstanceLayerProperties(&propertyCount, properties.data());
-
-        for(auto layer : layers)
-        {
-            bool layerFound = false;
-            for(auto property : properties)
-            {
-                if(strcmp(layer, property.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if(!layerFound)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    void Context::SetupDebugMessenger()
-    {
-        if(!validationEnabled)
-        {
-            return;
-        }
-
-        VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-        createInfo.pfnUserCallback = (PFN_vkDebugUtilsMessengerCallbackEXT)DebugCallback;
-        createInfo.pUserData = nullptr;
-        CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger);
-    }
-
-    void Context::CreateSurface(GLFWwindow* window)
-    {
-        if(glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create window surface");
-        }
+        device.DestroyBuffer(vertexBuffer);
+        device.DestroyBuffer(colorBuffer);
+        device.DestroyBuffer(indexBuffer);
+        device.Destroy();
+        instance.Destroy();
     }
 
     VkPhysicalDevice Context::PickPhysicalDevice()
     {
         uint32_t count;
-        vkEnumeratePhysicalDevices(instance, &count, nullptr);
+        vkEnumeratePhysicalDevices(instance.GetInstance(), &count, nullptr);
         std::vector<VkPhysicalDevice> devices(count);
-        vkEnumeratePhysicalDevices(instance, &count, devices.data());
+        vkEnumeratePhysicalDevices(instance.GetInstance(), &count, devices.data());
         VkPhysicalDevice physicalDevice;
         for(auto device : devices)
         {
-            if(IsDeviceSuitable(device, surface) == 1000)
+            if(IsDeviceSuitable(device, instance.GetSurface()) == 1000)
             {
                 physicalDevice = device;
                 break;
@@ -294,13 +151,13 @@ namespace Library
 
     void Context::CreateSwapChain(Window* window)
     {
-		Context::capabilities = querySwapChainSupportDetails(device.physicalDevice, surface);
+		Context::capabilities = querySwapChainSupportDetails(device.physicalDevice, instance.GetSurface());
         VkSurfaceFormatKHR format = chooseFormat(capabilities.formats);
         VkExtent2D extent = chooseSwapChainExtent(capabilities.capabilities, window);
         
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface;
+        createInfo.surface = instance.GetSurface();
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.minImageCount = std::min(capabilities.capabilities.minImageCount + 1, capabilities.capabilities.maxImageCount);
         createInfo.imageFormat = format.format;
@@ -471,7 +328,6 @@ namespace Library
                 throw std::runtime_error("Failed to create framebuffer");
             }
         }
-
     }
 
     void Context::CreateGraphicsPipeline()
@@ -537,12 +393,36 @@ namespace Library
         rasterization.depthBiasClamp = 0.0f;
         rasterization.depthBiasSlopeFactor = 1.0f;
 
+        VkVertexInputBindingDescription positionDescription = {};
+        VkVertexInputBindingDescription colorDescription = {};
+        positionDescription.binding = 0;
+        positionDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        positionDescription.stride = 3*sizeof(float);
+
+        colorDescription.binding = 1;
+        colorDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        colorDescription.stride = 3*sizeof(float);
+
+        VkVertexInputAttributeDescription positionInput = {};
+        VkVertexInputAttributeDescription colorInput = {};
+        positionInput.offset = 0;
+        positionInput.location = 0;
+        positionInput.format = VK_FORMAT_R32G32B32_SFLOAT;
+        positionInput.binding = 0;
+        colorInput.offset = 0;
+        colorInput.location = 1;
+        colorInput.format = VK_FORMAT_R32G32B32_SFLOAT;
+        colorInput.binding = 1;
+
+        VkVertexInputAttributeDescription attributes[] = {positionInput, colorInput};
+        VkVertexInputBindingDescription bindings[] = {positionDescription, colorDescription};
+
         VkPipelineVertexInputStateCreateInfo vertexInput = {};
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInput.vertexAttributeDescriptionCount = 0;
-        vertexInput.vertexBindingDescriptionCount = 0;
-        vertexInput.pVertexAttributeDescriptions = nullptr;
-        vertexInput.pVertexBindingDescriptions = nullptr;
+        vertexInput.vertexAttributeDescriptionCount = 2;
+        vertexInput.vertexBindingDescriptionCount = 2;
+        vertexInput.pVertexAttributeDescriptions = attributes;
+        vertexInput.pVertexBindingDescriptions = bindings;
 
         VkViewport viewport;
         viewport.x = 0;
@@ -640,7 +520,12 @@ namespace Library
             vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
             vkCmdBeginRenderPass(commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+            
+            VkBuffer buffers[] = {vertexBuffer.buffer, colorBuffer.buffer};
+            VkDeviceSize offsets[] = {0, 0};
+            vkCmdBindVertexBuffers(commandBuffers[i], 0, 2, buffers, offsets);
+            vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(commandBuffers[i], 6, 1, 0, 0, 0);
             vkCmdEndRenderPass(commandBuffers[i]);
             vkEndCommandBuffer(commandBuffers[i]);
         }

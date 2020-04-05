@@ -9,6 +9,9 @@ file(GLOB sources "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp"
 
 add_subdirectory("vendor/GLFW")
 
+add_library(dummy INTERFACE)
+target_include_directories(dummy INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/glm")
+
 add_library(Library "${sources}")
 
 target_include_directories(Library PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/vendor/GLFW/include"
@@ -19,4 +22,4 @@ find_library(Vulkan vulkan-1 "${CMAKE_CURRENT_SOURCE_DIR}/vendor/Vulkan/Lib")
 
 target_link_libraries(Library glfw ${GLFW_LIBRARIES})
 target_link_libraries(Library ${Vulkan})
-
+target_link_libraries(Library dummy)

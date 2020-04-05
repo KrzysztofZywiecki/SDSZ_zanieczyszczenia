@@ -5,9 +5,6 @@ layout(location = 0) out vec4 outColor;
 
 void main()
 {
-    float col = length(color);
-    float col1 = sin(col * 10);
-    float col2 = cos(col * 10);
-    float col3 = -sin(col * 10);
-    outColor = vec4(col1, col2, col3, 1.0);
+
+    outColor = vec4(color, 1.0);
 }

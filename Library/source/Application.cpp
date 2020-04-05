@@ -6,12 +6,12 @@ namespace Library
     {
         window.Init();
         window.Create(800, 600, "Najlepsze okno");
-        Context::InitVulkan(&window);
+        context.InitVulkan(&window);
     }
 
     Application::~Application()
     {
-        Context::CleanUP();
+        context.CleanUP();
         window.Destroy();
         window.Terminate();
     }
@@ -20,7 +20,7 @@ namespace Library
     {
         while(!window.WindowShouldClose())
         {
-            Context::DoTheThing();
+            context.DoTheThing();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
                 (*iterator)->Update();

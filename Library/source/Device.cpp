@@ -7,13 +7,12 @@ namespace Library
     {
     }
 
-    Device::Device(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface) 
-        : physicalDevice(physicalDevice)
+    void Device::Create(VkPhysicalDevice physicalDevice, VkInstance instance, VkSurfaceKHR surface)
     {
+        this->physicalDevice = physicalDevice;
         indices = GetQueueFamilyIndices(physicalDevice, surface);
         std::set<uint32_t> uniqueIndices = {indices.graphicsFamily.value(), indices.computeFamily.value(), indices.presentFamily.value()};
         std::vector<VkDeviceQueueCreateInfo> queueInfos(uniqueIndices.size());
-
         uint32_t i = 0;
         for(auto index : uniqueIndices)
         {
@@ -52,10 +51,10 @@ namespace Library
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &queues.presentQueue);
     }
 
-	void Device::Destroy()
-	{
-		vkDestroyDevice(device, nullptr);
-	}
+    void Device::Destroy()
+    {
+        vkDestroyDevice(device, nullptr);
+    }
 
     Device::~Device()
     {
@@ -141,4 +140,53 @@ namespace Library
         }
     }
 
+    Buffer Device::CreateBuffer(void* data, size_t size, MemoryUsage usageHint, Ownership owner, VkBufferUsageFlags usage)
+    {
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+        switch (usageHint)
+        {
+            case MemoryUsage::DYNAMIC:
+            {
+                VkBufferCreateInfo bufferInfo = {};
+                bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                
+                bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                bufferInfo.queueFamilyIndexCount = 0;
+                bufferInfo.pQueueFamilyIndices = nullptr;
+                bufferInfo.size = size;
+                bufferInfo.usage = usage;
+                
+                vkCreateBuffer(device, &bufferInfo, nullptr, &buffer);
+
+                VkMemoryRequirements memoryRequirements = {};
+                vkGetBufferMemoryRequirements(device, buffer, &memoryRequirements);
+                int32_t memoryIndex = ChooseMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                VkMemoryAllocateInfo allocInfo = {};
+                allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                allocInfo.memoryTypeIndex = memoryIndex;
+                allocInfo.allocationSize = memoryRequirements.size;
+
+                vkAllocateMemory(device, &allocInfo, nullptr, &memory);
+                void* destination;
+                vkMapMemory(device, memory, 0, size, 0, &destination);
+                memcpy(destination, data, size);
+                vkUnmapMemory(device, memory);
+                vkBindBufferMemory(device, buffer, memory, 0);
+            }
+            break;
+            default:
+            {
+                throw std::runtime_error("Unsupported usage hint used");
+            }
+            break;
+        }
+        return Buffer(buffer, memory, owner, usageHint);
+    }
+
+    void Device::DestroyBuffer(Buffer& buffer)
+    {
+        vkDestroyBuffer(device, buffer.buffer, nullptr);
+        vkFreeMemory(device, buffer.memory, nullptr);
+    }
 }
