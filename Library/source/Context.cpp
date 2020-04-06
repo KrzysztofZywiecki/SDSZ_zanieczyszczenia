@@ -37,7 +37,7 @@ namespace Library
         CreateRenderPass();
         CreateFramebuffers();
         CreateGraphicsPipeline();
-        CreateCommandPool();
+        device.CreateCommandPools();
         RecordCommandBuffers();
         CreateSyncObjects();
     }
@@ -46,8 +46,8 @@ namespace Library
     {
         vkDestroySemaphore(device.device, imageRenderedSemaphore, nullptr);
         vkDestroySemaphore(device.device, imageAcquiredSemaphore, nullptr);
-        vkFreeCommandBuffers(device.device, commandPool, commandBuffers.size(), commandBuffers.data());
-        vkDestroyCommandPool(device.device, commandPool, nullptr);
+        vkFreeCommandBuffers(device.device, device.commandPools.graphicsPool, commandBuffers.size(), commandBuffers.data());
+        device.DestroyCommandPools();
         vkDestroyPipeline(device.device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device.device, graphicsPipelineLayout, nullptr);
         for(auto framebuffer : framebuffers)
@@ -470,23 +470,12 @@ namespace Library
         vkDestroyShaderModule(device.device, fragmentShader, nullptr);
     }
 
-    void Context::CreateCommandPool()
-    {
-        VkCommandPoolCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        createInfo.queueFamilyIndex = device.indices.graphicsFamily.value();
-        if(vkCreateCommandPool(device.device, &createInfo, nullptr, &commandPool) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create command pool");
-        }
-    }
-
     void Context::RecordCommandBuffers()
     {
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandBufferCount = framebuffers.size();
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = device.commandPools.graphicsPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         
         commandBuffers.resize(framebuffers.size());

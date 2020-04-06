@@ -183,10 +183,41 @@ namespace Library
         }
         return Buffer(buffer, memory, owner, usageHint);
     }
-
     void Device::DestroyBuffer(Buffer& buffer)
     {
         vkDestroyBuffer(device, buffer.buffer, nullptr);
         vkFreeMemory(device, buffer.memory, nullptr);
     }
+
+    void Device::CreateCommandPools()
+    {
+        std::set uniqueIndices = {indices.graphicsFamily.value(), indices.computeFamily.value()};
+        for(auto index : uniqueIndices)
+        {
+            VkCommandPool commandPool;
+            VkCommandPoolCreateInfo poolInfo = {};
+            poolInfo.queueFamilyIndex = index;
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
+
+            if(indices.graphicsFamily == index)
+            {
+                commandPools.graphicsPool = commandPool;
+            }
+            if(indices.computeFamily == index)
+            {
+                commandPools.computePool = commandPool;
+            }
+        }        
+    }
+
+    void Device::DestroyCommandPools()
+    {
+        std::set<VkCommandPool> uniqueCommandPools = {commandPools.graphicsPool, commandPools.computePool};
+        for(auto pool : uniqueCommandPools)
+        {
+            vkDestroyCommandPool(device, pool, nullptr);
+        }
+    }
+
 }

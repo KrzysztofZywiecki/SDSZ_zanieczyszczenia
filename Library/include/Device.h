@@ -42,6 +42,12 @@ namespace Library
         VkQueue presentQueue;
     };
 
+    struct CommandPools
+    {
+        VkCommandPool graphicsPool;
+        VkCommandPool computePool;
+    };
+
     QueueFamilyIndices GetQueueFamilyIndices(VkPhysicalDevice device, VkSurfaceKHR surface);
     VkPhysicalDevice PickPhysicalDevice(std::vector<VkPhysicalDevice> devices);
 
@@ -51,6 +57,7 @@ namespace Library
             VkDevice device;
             QueueFamilyIndices indices;
             Queues queues;
+            CommandPools commandPools;
             VkPhysicalDevice physicalDevice;
             
             Device();
@@ -61,6 +68,8 @@ namespace Library
 
             Buffer CreateBuffer(void* data, size_t size, MemoryUsage usageHint, Ownership owner, VkBufferUsageFlags usage);
             void DestroyBuffer(Buffer& buffer);
+            void CreateCommandPools();
+            void DestroyCommandPools();
         private:
     };
 

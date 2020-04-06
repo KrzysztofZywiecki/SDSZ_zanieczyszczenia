@@ -47,7 +47,6 @@ namespace Library
             VkPipeline graphicsPipeline = VK_NULL_HANDLE;
             VkPipelineLayout graphicsPipelineLayout;
             VkRenderPass renderPass;
-            VkCommandPool commandPool;
             VkPipeline computePipeline;
             
             VkSemaphore imageAcquiredSemaphore;
@@ -69,7 +68,6 @@ namespace Library
             void CreateRenderPass();
             void CreateFramebuffers();
             void CreateGraphicsPipeline();
-            void CreateCommandPool();
             void RecordCommandBuffers();
             void CreateSyncObjects();
     };
