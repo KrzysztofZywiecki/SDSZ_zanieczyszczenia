@@ -1,6 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include "Window.h"
 #include "Device.h"
 #include "BasicInfo.h"
@@ -38,6 +39,7 @@ namespace Library
             Buffer vertexBuffer;
             Buffer indexBuffer;
             Buffer colorBuffer;
+            Buffer uniformBuffer;
 
             SwapChainSupportDetails capabilities;
             VkSwapchainKHR swapChain;
@@ -49,6 +51,9 @@ namespace Library
             VkRenderPass renderPass;
             VkCommandPool commandPool;
             VkPipeline computePipeline;
+            VkDescriptorSetLayout setLayout;
+            VkDescriptorPool descriptorPool;
+            VkDescriptorSet descriptorSet;
             
             VkSemaphore imageAcquiredSemaphore;
             VkSemaphore imageRenderedSemaphore;
@@ -72,6 +77,9 @@ namespace Library
             void CreateCommandPool();
             void RecordCommandBuffers();
             void CreateSyncObjects();
+            void CreateDescriptorSetLayout();
+            void CreateDescriptorPool();
+            void CreateDescriptorSet();
     };
 
 }

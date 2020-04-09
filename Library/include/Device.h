@@ -61,6 +61,8 @@ namespace Library
 
             Buffer CreateBuffer(void* data, size_t size, MemoryUsage usageHint, Ownership owner, VkBufferUsageFlags usage);
             void DestroyBuffer(Buffer& buffer);
+            void AssignMemory(Buffer buffer, void* data, size_t size);
+
         private:
     };
 

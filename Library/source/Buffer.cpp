@@ -8,8 +8,8 @@ namespace Library
     }
 
     Buffer::Buffer(VkBuffer buffer, VkDeviceMemory memory,
-        Ownership owner, MemoryUsage usage)
-        : buffer(buffer), memory(memory), owner(owner), usage(usage)
+        Ownership owner, MemoryUsage usage, size_t size)
+        : buffer(buffer), memory(memory), owner(owner), usage(usage), size(size)
         {}
 
     int32_t ChooseMemoryType(VkPhysicalDevice physicalDevice, uint32_t memoryTypeBits, VkMemoryPropertyFlags properties)

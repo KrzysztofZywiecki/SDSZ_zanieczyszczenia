@@ -181,7 +181,27 @@ namespace Library
             }
             break;
         }
-        return Buffer(buffer, memory, owner, usageHint);
+        return Buffer(buffer, memory, owner, usageHint, size);
+    }
+
+    void Device::AssignMemory(Buffer buffer, void* data, size_t size)
+    {
+        if(size > buffer.size)
+        {
+            throw std::runtime_error("Requested assign size greater than buffer original size");
+        }
+        switch(buffer.usage)
+        {
+            case DYNAMIC:
+                void* bufData;
+                vkMapMemory(device, buffer.memory, 0, size, 0, &bufData);
+                memcpy(bufData, data, size);
+                vkUnmapMemory(device, buffer.memory);
+                break;
+            default:
+                throw std::runtime_error("Memory usage not supported");
+                break;
+        }
     }
 
     void Device::DestroyBuffer(Buffer& buffer)
