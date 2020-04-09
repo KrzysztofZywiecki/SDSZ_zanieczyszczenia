@@ -31,7 +31,7 @@ namespace Library
             }
             window.PollEvents();
             
-            _sleep(500);
+            _sleep(20);
         }
     }
 

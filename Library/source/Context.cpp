@@ -18,11 +18,12 @@ namespace Library
                                         0.5f, -0.5f, 0.0f,
                                         0.5f, 0.5f, 0.0f,
                                         -0.5f, 0.5f, 0.0f};
-        std::vector<float> colors = {1.0f, 0.0f, 0.0f,
-                                    0.0f, 1.0f, 0.0f,
-                                    0.0f, 0.0f, 1.0f,
-                                    1.0f, 1.0f, 1.0f};
+        std::vector<float> colors = {0.0f, 0.0f, 0.0f,
+                                    1.0f, 0.0f, 0.0f,
+                                    1.0f, 1.0f, 0.0f,
+                                    0.0f, 1.0f, 0.0f};
         std::vector<unsigned int> indices = {0, 1, 2, 0, 2, 3};
+        std::vector<float> position = {0.5, 0.5, 0.0};
 
         vertexBuffer = device.CreateBuffer(vertices.data(), vertices.size() * sizeof(float), 
         DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -30,12 +31,17 @@ namespace Library
         DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         indexBuffer = device.CreateBuffer(indices.data(), indices.size() * sizeof(unsigned int), DYNAMIC,
         GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+        uniformBuffer = device.CreateBuffer(position.data(), position.size()*sizeof(float), DYNAMIC,
+        GRAPHICS, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
         CreateSwapChain(window);
         CreateSwapChainImageViews();
-        CreatePipelineLayout();
         CreateRenderPass();
         CreateFramebuffers();
+        CreateDescriptorPool();
+        CreateDescriptorSetLayout();
+        CreateDescriptorSet();
+        CreatePipelineLayout();
         CreateGraphicsPipeline();
         device.CreateCommandPools();
         RecordCommandBuffers();
@@ -63,6 +69,9 @@ namespace Library
         device.DestroyBuffer(vertexBuffer);
         device.DestroyBuffer(colorBuffer);
         device.DestroyBuffer(indexBuffer);
+        device.DestroyBuffer(uniformBuffer);
+        vkDestroyDescriptorSetLayout(device.device, setLayout, nullptr);
+        vkDestroyDescriptorPool(device.device, descriptorPool, nullptr);
         device.Destroy();
         instance.Destroy();
     }
@@ -249,8 +258,8 @@ namespace Library
         createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         createInfo.pushConstantRangeCount = 0;
         createInfo.pPushConstantRanges = nullptr;
-        createInfo.setLayoutCount = 0;
-        createInfo.pSetLayouts = nullptr;
+        createInfo.setLayoutCount = 1;
+        createInfo.pSetLayouts = &setLayout;
         if(vkCreatePipelineLayout(device.device, &createInfo, nullptr, &graphicsPipelineLayout) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create graphics pipeline layout");
@@ -267,7 +276,7 @@ namespace Library
         description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         description.format = swapChainImageFormat;
-        description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         description.samples = VK_SAMPLE_COUNT_1_BIT;
         description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -489,7 +498,7 @@ namespace Library
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pInheritanceInfo = nullptr;
 
-        VkClearValue clearColor = {0.0, 0.0, 0.0, 1.0};
+        VkClearValue clearColor = {0.2, 0.3, 0.7, 1.0};
 
         VkRect2D renderArea = {};
         renderArea.extent = windowExtent;
@@ -498,8 +507,8 @@ namespace Library
         VkRenderPassBeginInfo passInfo = {};
         passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         passInfo.renderPass = renderPass;
-        passInfo.pClearValues = &clearColor;
         passInfo.clearValueCount = 1;
+        passInfo.pClearValues = &clearColor;
         passInfo.renderArea = renderArea;
 
         for(uint32_t i = 0; i < commandBuffers.size(); i++)
@@ -514,6 +523,7 @@ namespace Library
             VkDeviceSize offsets[] = {0, 0};
             vkCmdBindVertexBuffers(commandBuffers[i], 0, 2, buffers, offsets);
             vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
             vkCmdDrawIndexed(commandBuffers[i], 6, 1, 0, 0, 0);
             vkCmdEndRenderPass(commandBuffers[i]);
             vkEndCommandBuffer(commandBuffers[i]);
@@ -529,8 +539,13 @@ namespace Library
         vkCreateSemaphore(device.device, &createInfo, nullptr, &imageAcquiredSemaphore);
     }
 
+float time = 0;
+
     void Context::DoTheThing()
     {
+        time = time + 0.01;
+        float data[] = {glm::sin(time)/2.0, glm::cos(time)/2.0, 0.0f};
+        device.AssignMemory(uniformBuffer, data, sizeof(data));
         uint32_t index;
         vkAcquireNextImageKHR(device.device, swapChain, UINT32_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &index);
 
@@ -558,6 +573,72 @@ namespace Library
 
         vkQueuePresentKHR(device.queues.graphicsQueue, &presentInfo);
         vkDeviceWaitIdle(device.device);
+    }
+
+    void Context::CreateDescriptorSetLayout()
+    {
+        VkDescriptorSetLayoutBinding binding = {};
+        binding.binding = 0;
+        binding.descriptorCount = 1;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binding.pImmutableSamplers = nullptr;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        
+        VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
+        layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutCreateInfo.pBindings = &binding;
+        layoutCreateInfo.bindingCount = 1;
+        
+        if(vkCreateDescriptorSetLayout(device.device, &layoutCreateInfo, nullptr, &setLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create Descriptor Set Layout");
+        }
+    }
+
+    void Context::CreateDescriptorPool()
+    {
+        VkDescriptorPoolSize poolSize = {};
+        poolSize.descriptorCount = 1;
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.maxSets = 1;
+        if(vkCreateDescriptorPool(device.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create Descriptor Pool");
+        }
+    }
+
+    void Context::CreateDescriptorSet()
+    {
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &setLayout;
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+
+        if(vkAllocateDescriptorSets(device.device, &allocInfo, &descriptorSet) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate Descriptor Set");
+        }
+
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = uniformBuffer.buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet writeInfo = {};
+        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeInfo.pBufferInfo = &bufferInfo;
+        writeInfo.descriptorCount = 1;
+        writeInfo.dstSet = descriptorSet;
+        writeInfo.dstBinding = 0;
+        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    
+        vkUpdateDescriptorSets(device.device, 1, &writeInfo, 0, nullptr);
     }
 
 }
