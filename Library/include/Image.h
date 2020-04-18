@@ -11,9 +11,9 @@ namespace Library
         Image();
 
         Ownership owner;
-        MemoryUsage usage;
         VkImage image;
         VkImageView imageView;
+        VkSampler sampler;
         VkDeviceMemory memory;
     };
 

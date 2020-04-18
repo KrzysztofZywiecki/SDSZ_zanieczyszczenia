@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "Buffer.h"
+#include "Image.h"
 #include <stdexcept>
 #include <vector>
 #include <optional>
@@ -70,9 +71,15 @@ namespace Library
             void DestroyBuffer(Buffer& buffer);
             void AssignMemory(Buffer buffer, void* data, size_t size);
 
+            Image CreateImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, Ownership owner, void* data = nullptr, size_t size = 0);
+            void DestroyImage(Image image);
             void CreateCommandPools();
             void DestroyCommandPools();
+            VkCommandBuffer BeginSingleTimeCommand(Ownership family);
+            void EndSingleTimeCommand(VkCommandBuffer commandBuffer, Ownership family);
         private:
+            VkDeviceMemory AllocateMemory(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
+            void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner); //TODO: Napisać tą funkcję
     };
 
 }

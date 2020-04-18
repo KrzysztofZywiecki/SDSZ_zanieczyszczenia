@@ -40,6 +40,7 @@ namespace Library
             Buffer indexBuffer;
             Buffer colorBuffer;
             Buffer uniformBuffer;
+            Image image;
 
             SwapChainSupportDetails capabilities;
             VkSwapchainKHR swapChain;
@@ -51,8 +52,10 @@ namespace Library
             VkRenderPass renderPass;
             VkPipeline computePipeline;
             VkDescriptorSetLayout setLayout;
+            VkDescriptorSetLayout textureLayout;
             VkDescriptorPool descriptorPool;
             VkDescriptorSet descriptorSet;
+            VkDescriptorSet texture;
             
             VkSemaphore imageAcquiredSemaphore;
             VkSemaphore imageRenderedSemaphore;
