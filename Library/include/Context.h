@@ -47,19 +47,25 @@ namespace Library
             std::vector<VkImage> swapChainImages;
             std::vector<VkImageView> swapChainImageViews;
             std::vector<VkFramebuffer> framebuffers;
+            VkRenderPass renderPass;
             VkPipeline graphicsPipeline = VK_NULL_HANDLE;
             VkPipelineLayout graphicsPipelineLayout;
-            VkRenderPass renderPass;
-            VkPipeline computePipeline;
+            VkPipelineLayout computePipelineLayout;
+            VkPipeline computePipeline = VK_NULL_HANDLE;
             VkDescriptorSetLayout setLayout;
             VkDescriptorSetLayout textureLayout;
             VkDescriptorPool descriptorPool;
             VkDescriptorSet descriptorSet;
             VkDescriptorSet texture;
+            VkDescriptorSetLayout storageImageLayout;
+            VkDescriptorSet storageImage;
             
             VkSemaphore imageAcquiredSemaphore;
             VkSemaphore imageRenderedSemaphore;
+            VkSemaphore computationFinishedSemaphore;
             std::vector<VkCommandBuffer> commandBuffers;
+            VkCommandBuffer dispatchComputeCommandBuffer;
+
 
             VkFormat swapChainImageFormat;
             VkExtent2D windowExtent;
@@ -72,10 +78,12 @@ namespace Library
             void CreateDevice();
             void CreateSwapChain(Window* window);
             void CreateSwapChainImageViews();
-            void CreatePipelineLayout();
             void CreateRenderPass();
-            void CreateFramebuffers();
+            void CreateGraphicsPipelineLayout();
+            void CreateComputePipelineLayout();
             void CreateGraphicsPipeline();
+            void CreateComputePipeline();
+            void CreateFramebuffers();
             void RecordCommandBuffers();
             void CreateSyncObjects();
             void CreateDescriptorSetLayout();

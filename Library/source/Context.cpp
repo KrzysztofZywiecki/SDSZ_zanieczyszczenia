@@ -32,7 +32,6 @@ namespace Library
         CreateRenderPass();
         CreateFramebuffers();
         device.CreateCommandPools();
-
         image = device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 2, 2, GRAPHICS, data, sizeof(unsigned char)*4);
         vertexBuffer = device.CreateBuffer(vertices.data(), vertices.size() * sizeof(float), 
         STATIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -46,18 +45,33 @@ namespace Library
         CreateDescriptorPool();
         CreateDescriptorSetLayout();
         CreateDescriptorSet();
-        CreatePipelineLayout();
+        CreateGraphicsPipelineLayout();
         CreateGraphicsPipeline();
+        CreateComputePipelineLayout();
+        CreateComputePipeline();
         RecordCommandBuffers();
         CreateSyncObjects();
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &computationFinishedSemaphore;
+        submitInfo.pCommandBuffers = &dispatchComputeCommandBuffer;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.waitSemaphoreCount = 0;
+        submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
+        vkQueueSubmit(device.queues.computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     }
 
     void Context::CleanUP()
     {
+        vkDestroySemaphore(device.device, computationFinishedSemaphore, nullptr);
         vkDestroySemaphore(device.device, imageRenderedSemaphore, nullptr);
         vkDestroySemaphore(device.device, imageAcquiredSemaphore, nullptr);
         vkFreeCommandBuffers(device.device, device.commandPools.graphicsPool, commandBuffers.size(), commandBuffers.data());
         device.DestroyCommandPools();
+        vkDestroyPipeline(device.device, computePipeline, nullptr);
+        vkDestroyPipelineLayout(device.device, computePipelineLayout, nullptr);
         vkDestroyPipeline(device.device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device.device, graphicsPipelineLayout, nullptr);
         for(auto framebuffer : framebuffers)
@@ -77,6 +91,7 @@ namespace Library
         device.DestroyImage(image);
         vkDestroyDescriptorSetLayout(device.device, textureLayout, nullptr);
         vkDestroyDescriptorSetLayout(device.device, setLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device.device, storageImageLayout, nullptr);
         vkDestroyDescriptorPool(device.device, descriptorPool, nullptr);
         device.Destroy();
         instance.Destroy();
@@ -258,7 +273,7 @@ namespace Library
         return shaderModule;
     }
 
-    void Context::CreatePipelineLayout()
+    void Context::CreateGraphicsPipelineLayout()
     {
         VkPipelineLayoutCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -493,12 +508,22 @@ namespace Library
         allocInfo.commandBufferCount = framebuffers.size();
         allocInfo.commandPool = device.commandPools.graphicsPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VkCommandBufferAllocateInfo compAllocInfo = {};
+        compAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        compAllocInfo.commandBufferCount = 1;
+        compAllocInfo.commandPool = device.commandPools.computePool;
+        compAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         
         commandBuffers.resize(framebuffers.size());
 
         if(vkAllocateCommandBuffers(device.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to allocate command buffers");
+        }
+        if(vkAllocateCommandBuffers(device.device, &compAllocInfo, &dispatchComputeCommandBuffer) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate compute command buffer");
         }
 
         VkCommandBufferBeginInfo beginInfo = {};
@@ -537,6 +562,16 @@ namespace Library
             vkCmdEndRenderPass(commandBuffers[i]);
             vkEndCommandBuffer(commandBuffers[i]);
         }
+
+        VkCommandBufferBeginInfo compBeginInfo = {};
+        compBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        compBeginInfo.pInheritanceInfo = nullptr;
+
+        vkBeginCommandBuffer(dispatchComputeCommandBuffer, &beginInfo);
+        vkCmdBindDescriptorSets(dispatchComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &storageImage, 0, nullptr);
+        vkCmdBindPipeline(dispatchComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+        vkCmdDispatch(dispatchComputeCommandBuffer, 1, 1, 1);
+        vkEndCommandBuffer(dispatchComputeCommandBuffer);
     }
 
     void Context::CreateSyncObjects()
@@ -546,6 +581,7 @@ namespace Library
 
         vkCreateSemaphore(device.device, &createInfo, nullptr, &imageRenderedSemaphore);
         vkCreateSemaphore(device.device, &createInfo, nullptr, &imageAcquiredSemaphore);
+        vkCreateSemaphore(device.device, &createInfo, nullptr, &computationFinishedSemaphore);
     }
 
 float time = 0;
@@ -619,6 +655,23 @@ float time = 0;
         {
             throw std::runtime_error("Failed to create texture sampler layout");
         }
+
+        VkDescriptorSetLayoutBinding storageImageBinding = {};
+        storageImageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        storageImageBinding.binding = 0;
+        storageImageBinding.descriptorCount = 1;
+        storageImageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        storageImageBinding.pImmutableSamplers = nullptr;
+
+        VkDescriptorSetLayoutCreateInfo storageLayoutInfo = {};
+        storageLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        storageLayoutInfo.pBindings = &storageImageBinding;
+        storageLayoutInfo.bindingCount = 1;
+        
+        if(vkCreateDescriptorSetLayout(device.device, &storageLayoutInfo, nullptr, &storageImageLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create storage image");
+        }
     }
 
     void Context::CreateDescriptorPool()
@@ -631,13 +684,17 @@ float time = 0;
         texturePoolSize.descriptorCount = 1;
         texturePoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-        VkDescriptorPoolSize sizes[] = {poolSize, texturePoolSize};
+        VkDescriptorPoolSize storageImagePoolSize = {};
+        storageImagePoolSize.descriptorCount = 1;
+        storageImagePoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        VkDescriptorPoolSize sizes[] = {poolSize, texturePoolSize, storageImagePoolSize};
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.pPoolSizes = sizes;
-        poolInfo.poolSizeCount = 2;
-        poolInfo.maxSets = 2;
+        poolInfo.poolSizeCount = 3;
+        poolInfo.maxSets = 3;
         if(vkCreateDescriptorPool(device.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create Descriptor Pool");
@@ -655,6 +712,9 @@ float time = 0;
         VkDescriptorSetAllocateInfo textureAllocInfo = allocInfo;
         textureAllocInfo.pSetLayouts = &textureLayout;
 
+        VkDescriptorSetAllocateInfo storageImageAllocateInfo = allocInfo;
+        storageImageAllocateInfo.pSetLayouts = &storageImageLayout;
+
         if(vkAllocateDescriptorSets(device.device, &allocInfo, &descriptorSet) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to allocate Descriptor Set");
@@ -662,6 +722,10 @@ float time = 0;
         if(vkAllocateDescriptorSets(device.device, &textureAllocInfo, &texture) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to allocate Descriptor Set");
+        }
+        if(vkAllocateDescriptorSets(device.device, &storageImageAllocateInfo, &storageImage) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allovate Descripto Set");
         }
 
         VkDescriptorBufferInfo bufferInfo = {};
@@ -691,9 +755,57 @@ float time = 0;
         textureWriteInfo.dstArrayElement = 0;
 		textureWriteInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-        VkWriteDescriptorSet writeInfos[] = {writeInfo, textureWriteInfo};
+        VkWriteDescriptorSet storageImageWriteInfo = {};
+        storageImageWriteInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        storageImageWriteInfo.descriptorCount = 1;
+        storageImageWriteInfo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        storageImageWriteInfo.dstArrayElement = 0;
+        storageImageWriteInfo.dstBinding = 0;
+        storageImageWriteInfo.dstSet = storageImage;
+        storageImageWriteInfo.pImageInfo = &imageInfo;
 
-        vkUpdateDescriptorSets(device.device, 2, writeInfos, 0, nullptr);
+        VkWriteDescriptorSet writeInfos[] = {writeInfo, textureWriteInfo, storageImageWriteInfo};
+
+        vkUpdateDescriptorSets(device.device, 3, writeInfos, 0, nullptr);
+    }
+
+    void Context::CreateComputePipelineLayout()
+    {
+        VkPipelineLayoutCreateInfo pipelineInfo = {};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineInfo.pPushConstantRanges = nullptr;
+        pipelineInfo.pSetLayouts = &storageImageLayout;
+        pipelineInfo.pushConstantRangeCount = 0;
+        pipelineInfo.setLayoutCount = 1;
+        if(vkCreatePipelineLayout(device.device, &pipelineInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create compute pipeline");
+        }
+    }
+
+    void Context::CreateComputePipeline()
+    {
+        VkShaderModule computeShader = CreateShaderModule("Shaders/comp.spv");
+
+        VkPipelineShaderStageCreateInfo shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        shaderStage.pSpecializationInfo = nullptr;
+        shaderStage.pName = "main";
+        shaderStage.module = computeShader;
+
+        VkComputePipelineCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        createInfo.layout = computePipelineLayout;
+        createInfo.basePipelineIndex = 0;
+        createInfo.basePipelineHandle = VK_NULL_HANDLE;
+        createInfo.stage = shaderStage;
+
+        if(vkCreateComputePipelines(device.device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &computePipeline) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create compute pipeline!");
+        }
+        vkDestroyShaderModule(device.device, computeShader, nullptr);
     }
 
 }
