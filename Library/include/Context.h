@@ -11,6 +11,8 @@
 #include <iostream>
 #include <fstream>
 
+#define SIMOLTANEOUS_FRAMES 1
+
 namespace Library
 {
 
@@ -28,8 +30,10 @@ namespace Library
             void InitVulkan(Window* window);
             void CleanUP();
 
-            void DoTheThing(); //For test ONLY, delete later
-
+            void BeginRendering();
+            void EndRendering();
+            void BeginFrame();
+            void EndFrame();
 
         private:
             Window* window;
@@ -66,12 +70,11 @@ namespace Library
             std::vector<VkCommandBuffer> commandBuffers;
             VkCommandBuffer dispatchComputeCommandBuffer;
 
+            uint32_t imageIndex;
 
             VkFormat swapChainImageFormat;
             VkExtent2D windowExtent;
 
-            std::vector<const char*> GetRequiredExtensions();
-            bool CheckValidationSupport();
             VkShaderModule CreateShaderModule(const char* path);
 
             VkPhysicalDevice PickPhysicalDevice();

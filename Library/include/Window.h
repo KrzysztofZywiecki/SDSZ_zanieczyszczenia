@@ -10,19 +10,19 @@ namespace Library
         public:
             static void Init();
             static void Terminate();
-            void Create(int width, int height, const char* title);
+            void Create(uint32_t width, uint32_t height, const char* title);
             void Destroy();
             void PollEvents();
             bool WindowShouldClose();
 
-            int getWidth() const    {return width;}
-            int getHeight() const   {return height;}
+            uint32_t getWidth() const    {return width;}
+            uint32_t getHeight() const   {return height;}
 
             GLFWwindow* getWindowPtr() {return window;}
 
         private:
             GLFWwindow* window;
-            int width;
-            int height;
+            uint32_t width;
+            uint32_t height;
     };
 }

@@ -20,18 +20,19 @@ namespace Library
     {
         while(!window.WindowShouldClose())
         {
-            context.DoTheThing();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
                 (*iterator)->Update();
             }
+            context.BeginFrame();
+            context.BeginRendering();
             for(auto layer : layerStack)
             {
                 layer->Render();
             }
+            context.EndRendering();
+            context.EndFrame();
             window.PollEvents();
-            
-            _sleep(20);
         }
     }
 

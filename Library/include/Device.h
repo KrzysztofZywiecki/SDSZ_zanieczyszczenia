@@ -77,9 +77,11 @@ namespace Library
             void DestroyCommandPools();
             VkCommandBuffer BeginSingleTimeCommand(Ownership family);
             void EndSingleTimeCommand(VkCommandBuffer commandBuffer, Ownership family);
+            void PassOwnership(Buffer buffer, Ownership newOwner);
+            void PassOwnership(Image image, Ownership newOwner);
+            void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner); //TODO: Napisać tą funkcję
         private:
             VkDeviceMemory AllocateMemory(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
-            void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner); //TODO: Napisać tą funkcję
     };
 
 }

@@ -339,6 +339,7 @@ namespace Library
             VkCommandPool commandPool;
             VkCommandPoolCreateInfo poolInfo = {};
             poolInfo.queueFamilyIndex = index;
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
             poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
 
@@ -443,6 +444,7 @@ namespace Library
         
             sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			image.owner = newOwner;
         }
         else if(oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_GENERAL)
         {
@@ -465,12 +467,12 @@ namespace Library
                     throw std::runtime_error("You what mate?");
                 break;
             }
-            image.owner = newOwner;
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			image.owner = newOwner;
         }
         else if(oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_GENERAL)
         {
-            if(image.owner != newOwner)
+            if(image.owner != newOwner && queues.computeQueue == queues.graphicsQueue)
             {
                 memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
                 memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
@@ -493,10 +495,9 @@ namespace Library
                         throw std::runtime_error("You what mate?");
                     break;
                 }
-                image.owner = newOwner;
             }
+			image.owner = newOwner;
         }
-
         VkCommandBuffer commandBuffer = BeginSingleTimeCommand(COMPUTE);
         vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
         EndSingleTimeCommand(commandBuffer, COMPUTE);

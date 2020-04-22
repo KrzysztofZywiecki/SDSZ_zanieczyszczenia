@@ -17,7 +17,7 @@ namespace Library
         glfwTerminate();
     }
 
-    void Window::Create(int width, int height, const char* title)
+    void Window::Create(uint32_t width, uint32_t height, const char* title)
     {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
