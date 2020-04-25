@@ -51,17 +51,6 @@ namespace Library
         CreateComputePipeline();
         RecordCommandBuffers();
         CreateSyncObjects();
-
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &computationFinishedSemaphore;
-        submitInfo.pCommandBuffers = &dispatchComputeCommandBuffer;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.waitSemaphoreCount = 0;
-        submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
-        vkQueueSubmit(device.queues.computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        device.TransitionImageLayout(image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, GRAPHICS);
     }
 
     void Context::CleanUP()
@@ -69,7 +58,8 @@ namespace Library
         vkDestroySemaphore(device.device, computationFinishedSemaphore, nullptr);
         vkDestroySemaphore(device.device, imageRenderedSemaphore, nullptr);
         vkDestroySemaphore(device.device, imageAcquiredSemaphore, nullptr);
-        vkFreeCommandBuffers(device.device, device.commandPools.graphicsPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+        vkFreeCommandBuffers(device.device, device.commandPools.graphicsPool, 
+            static_cast<uint32_t>(renderingCommandBuffers.size()), renderingCommandBuffers.data());
         device.DestroyCommandPools();
         vkDestroyPipeline(device.device, computePipeline, nullptr);
         vkDestroyPipelineLayout(device.device, computePipelineLayout, nullptr);
@@ -504,44 +494,29 @@ namespace Library
 
     void Context::RecordCommandBuffers()
     {
-        VkCommandBufferAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandBufferCount = framebuffers.size();
-        allocInfo.commandPool = device.commandPools.graphicsPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        VkCommandBufferAllocateInfo renderAllocInfo = {};
+		renderAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		renderAllocInfo.commandBufferCount = framebuffers.size();
+		renderAllocInfo.commandPool = device.commandPools.graphicsPool;
+		renderAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
         VkCommandBufferAllocateInfo compAllocInfo = {};
         compAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        compAllocInfo.commandBufferCount = 1;
+        compAllocInfo.commandBufferCount = framebuffers.size();
         compAllocInfo.commandPool = device.commandPools.computePool;
         compAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        
-        VkCommandBufferAllocateInfo renderAllocInfo = {};
-        renderAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        renderAllocInfo.commandBufferCount = SIMOLTANEOUS_FRAMES;
-        renderAllocInfo.commandPool = device.commandPools.graphicsPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-        commandBuffers.resize(framebuffers.size());
+        renderingCommandBuffers.resize(framebuffers.size());
+		computeCommandBuffers.resize(framebuffers.size());
 
-        if(vkAllocateCommandBuffers(device.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+        if(vkAllocateCommandBuffers(device.device, &renderAllocInfo, renderingCommandBuffers.data()) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to allocate command buffers");
         }
-        if(vkAllocateCommandBuffers(device.device, &compAllocInfo, &dispatchComputeCommandBuffer) != VK_SUCCESS)
+        if(vkAllocateCommandBuffers(device.device, &compAllocInfo, computeCommandBuffers.data()) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to allocate compute command buffer");
         }
-
-        VkCommandBufferBeginInfo compBeginInfo = {};
-        compBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        compBeginInfo.pInheritanceInfo = nullptr;
-
-        vkBeginCommandBuffer(dispatchComputeCommandBuffer, &compBeginInfo);
-        vkCmdBindDescriptorSets(dispatchComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &storageImage, 0, nullptr);
-        vkCmdBindPipeline(dispatchComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-        vkCmdDispatch(dispatchComputeCommandBuffer, 1, 1, 1);
-        vkEndCommandBuffer(dispatchComputeCommandBuffer);
     }
 
     void Context::BeginRendering()
@@ -564,19 +539,19 @@ namespace Library
         passInfo.renderArea = renderArea;
         passInfo.framebuffer = framebuffers[imageIndex];
 
-        vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo);
-        vkCmdBeginRenderPass(commandBuffers[imageIndex], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkBeginCommandBuffer(renderingCommandBuffers[imageIndex], &beginInfo);
+        vkCmdBeginRenderPass(renderingCommandBuffers[imageIndex], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
     void Context::EndRendering()
     {
-        vkCmdEndRenderPass(commandBuffers[imageIndex]);
-        vkEndCommandBuffer(commandBuffers[imageIndex]);
+        vkCmdEndRenderPass(renderingCommandBuffers[imageIndex]);
+        vkEndCommandBuffer(renderingCommandBuffers[imageIndex]);
         
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = commandBuffers.data() + imageIndex;
+        submitInfo.pCommandBuffers = renderingCommandBuffers.data() + imageIndex;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &imageRenderedSemaphore;
@@ -602,15 +577,17 @@ namespace Library
     {
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         
+        VkSemaphore waitSemaphores[] = {computationFinishedSemaphore};
+
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &imageAcquiredSemaphore;
+        submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pSignalSemaphores = &imageRenderedSemaphore;
         submitInfo.pWaitDstStageMask = &waitStage;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = commandBuffers.data() + imageIndex;
+        submitInfo.pCommandBuffers = renderingCommandBuffers.data() + imageIndex;
 
         vkQueueSubmit(device.queues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     
@@ -628,6 +605,33 @@ namespace Library
 
         vkQueuePresentKHR(device.queues.presentQueue, &presentInfo);
         vkQueueWaitIdle(device.queues.presentQueue);
+    }
+
+    void Context::BeginComputeOperations()
+    {
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.pInheritanceInfo = nullptr;
+        
+        vkBeginCommandBuffer(computeCommandBuffers[imageIndex], &beginInfo);
+    }
+
+    void Context::EndComputeOperations()
+    {
+        vkEndCommandBuffer(computeCommandBuffers[imageIndex]);
+        
+		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &imageAcquiredSemaphore;
+        submitInfo.pWaitDstStageMask = &waitStage;
+        submitInfo.pSignalSemaphores = &computationFinishedSemaphore;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = computeCommandBuffers.data() + imageIndex;
+
+        vkQueueSubmit(device.queues.computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     }
 
     void Context::CreateDescriptorSetLayout()

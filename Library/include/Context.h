@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 
-#define SIMOLTANEOUS_FRAMES 1
+#define SIMULTANEOUS_FRAMES 1
 
 namespace Library
 {
@@ -35,9 +35,15 @@ namespace Library
             void BeginFrame();
             void EndFrame();
 
+            void BeginComputeOperations();
+            void EndComputeOperations();
+        
+            VkCommandBuffer GetComputeBuffer(){return computeCommandBuffers[imageIndex];}
+            VkCommandBuffer GetRenderingBuffer(){return renderingCommandBuffers[imageIndex];}
+
+            Device device;
         private:
             Window* window;
-            Device device;
             Instance instance;
 
             Buffer vertexBuffer;
@@ -67,8 +73,8 @@ namespace Library
             VkSemaphore imageAcquiredSemaphore;
             VkSemaphore imageRenderedSemaphore;
             VkSemaphore computationFinishedSemaphore;
-            std::vector<VkCommandBuffer> commandBuffers;
-            VkCommandBuffer dispatchComputeCommandBuffer;
+            std::vector<VkCommandBuffer> renderingCommandBuffers;
+            std::vector<VkCommandBuffer> computeCommandBuffers;
 
             uint32_t imageIndex;
 

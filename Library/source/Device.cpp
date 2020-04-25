@@ -147,6 +147,10 @@ namespace Library
         VkMemoryAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.memoryTypeIndex = ChooseMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, propertyFlags);
+        if(allocInfo.memoryTypeIndex == -1)
+        {
+            throw std::runtime_error("Failed to find suitable memory type");
+        }
         allocInfo.allocationSize = memoryRequirements.size;
 
         if(vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
@@ -240,7 +244,7 @@ namespace Library
 
     Image Device::CreateImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, Ownership owner, void* data, size_t size)
     {
-        Image image = {};
+        Image image;
 
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -248,7 +252,6 @@ namespace Library
         imageInfo.mipLevels = 1;
         imageInfo.arrayLayers = 1;
         imageInfo.extent = VkExtent3D({width, height, 1});
-        imageInfo.format = VK_FORMAT_UNDEFINED;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -328,6 +331,82 @@ namespace Library
             DestroyBuffer(imageBuffer);
         }
         return image;
+    }
+
+    Image Device::CreateWriteOnlyImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, size_t size)
+    {
+        Image image;
+
+        VkImageCreateInfo imageInfo = {};
+
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage = usage;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent = VkExtent3D({width, height, 1});
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+
+        if(vkCreateImage(device, &imageInfo, nullptr, &image.image) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create image");
+        }
+
+        VkMemoryRequirements requirements;
+        vkGetImageMemoryRequirements(device, image.image, &requirements);
+        image.memory = AllocateMemory(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        vkBindImageMemory(device, image.image, image.memory, 0);
+
+        VkImageViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.image = image.image;
+        viewInfo.format = format;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.subresourceRange.aspectMask = aspect;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.levelCount = 1;
+
+        if(vkCreateImageView(device, &viewInfo, nullptr, &image.imageView) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create Image View");
+        }
+
+        VkSamplerCreateInfo samplerInfo = {};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.magFilter = VK_FILTER_NEAREST;
+        samplerInfo.minFilter = VK_FILTER_NEAREST;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        samplerInfo.maxAnisotropy = 16.0f;
+        samplerInfo.maxLod = 0.0;
+        samplerInfo.minLod = 0.0;
+        samplerInfo.mipLodBias = 0.0;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        
+        if(vkCreateSampler(device, &samplerInfo, nullptr, &image.sampler) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create image sampler");
+        }
+
+        image.owner = COMPUTE;
+        TransitionImageLayout(image, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_GENERAL, COMPUTE);
+		return image;
     }
 
 
@@ -444,6 +523,18 @@ namespace Library
         
             sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			image.owner = newOwner;
+        }
+        else if(oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_GENERAL)
+        {
+            memoryBarrier.srcAccessMask = 0;
+            memoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+			memoryBarrier.dstQueueFamilyIndex = indices.computeFamily.value();
+			memoryBarrier.srcQueueFamilyIndex = indices.computeFamily.value();
+
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			image.owner = newOwner;
         }
         else if(oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_GENERAL)

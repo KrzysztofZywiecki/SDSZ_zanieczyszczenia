@@ -9,11 +9,16 @@ namespace Library
 
     LayerStack::~LayerStack()
     {
-        for(auto iterator = rbegin(); iterator != rend(); iterator++)
-        {
-            (*iterator)->onDetach();
-        }
+
     }
+
+	void LayerStack::Clear()
+	{
+		for (auto iterator = rbegin(); iterator != rend(); iterator++)
+		{
+			(*iterator)->onDetach();
+		}
+	}
 
     void LayerStack::PushLayer(Layer* layer)
     {

@@ -11,6 +11,7 @@ namespace Library
 
     Application::~Application()
     {
+		layerStack.Clear();
         context.CleanUP();
         window.Destroy();
         window.Terminate();
@@ -20,12 +21,16 @@ namespace Library
     {
         while(!window.WindowShouldClose())
         {
+            context.BeginFrame();
+            context.BeginRendering();
+            
+            context.BeginComputeOperations();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
                 (*iterator)->Update();
             }
-            context.BeginFrame();
-            context.BeginRendering();
+            context.EndComputeOperations();
+            
             for(auto layer : layerStack)
             {
                 layer->Render();

@@ -72,6 +72,7 @@ namespace Library
             void AssignMemory(Buffer buffer, void* data, size_t size);
 
             Image CreateImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, Ownership owner, void* data = nullptr, size_t size = 0);
+            Image CreateWriteOnlyImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, size_t size);
             void DestroyImage(Image image);
             void CreateCommandPools();
             void DestroyCommandPools();
@@ -79,9 +80,8 @@ namespace Library
             void EndSingleTimeCommand(VkCommandBuffer commandBuffer, Ownership family);
             void PassOwnership(Buffer buffer, Ownership newOwner);
             void PassOwnership(Image image, Ownership newOwner);
-            void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner); //TODO: Napisać tą funkcję
+            void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner);
         private:
             VkDeviceMemory AllocateMemory(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
     };
-
 }

@@ -12,6 +12,7 @@ namespace Library
             ~LayerStack();
 
             void PushLayer(Layer* layer);
+			void Clear();
             void PopLayer();
 
             std::vector<Layer*>::iterator begin()           {return layerStack.begin();}

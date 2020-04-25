@@ -2,7 +2,7 @@
 
 Sandbox::Sandbox()
 {
-    layerStack.PushLayer(new BaseLayer());
+    layerStack.PushLayer(new BaseLayer(&context));
 }
 
 Sandbox::~Sandbox()
