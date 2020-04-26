@@ -1,10 +1,22 @@
 #version 460 core
 
-layout(local_size_x = 2, local_size_y = 2) in;
+layout(local_size_x = 16, local_size_y = 16) in;
 
-layout(binding = 0, rgba8_snorm) uniform image2D imag;
+layout(set = 0, binding = 0, r32f) uniform image2D in_image;
+layout(set = 1, binding = 0, r32f) uniform image2D out_image;
 
 void main()
 {
-	imageStore(imag, ivec2(gl_GlobalInvocationID.xy), vec4(0.5, 0.0, 1.0,1.0));
+float neighbor1 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,0)).r;
+float neighbor2 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,0)).r;
+float neighbor3 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,-1)).r;
+float neighbor4 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
+
+float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
+
+float timeConst = 0.04;
+float mean = (neighbor1 + neighbor2 + neighbor3 + neighbor4)/4.0;
+float result = (1 - timeConst) * state + timeConst * mean;
+
+	imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
 }

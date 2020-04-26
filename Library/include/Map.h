@@ -21,6 +21,11 @@ namespace Library
             uint32_t GetHeight(){return height;}
             uint32_t GetPixelSize(){return pixelSize;}
         private:
+            struct Vertex
+            {
+                glm::vec3 pos;
+                glm::vec2 texCoord;
+            };
             void CreateVulkanObjects();
             void CreateDescriptorSetLayouts();
             void CreatePipelineLayouts();
@@ -36,7 +41,7 @@ namespace Library
             Context* context;
             Image images[2];
 
-            uint8_t imageIndex;
+            uint8_t imageIndex = 0;
 
             size_t pixelSize;
             uint32_t width;

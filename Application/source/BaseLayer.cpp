@@ -13,12 +13,17 @@ BaseLayer::BaseLayer(Library::Context* context)
 void BaseLayer::onAttach()
 {
     std::cout<<"Attached!"<<std::endl;
-    data.resize(100*100);
+    data.resize(256*256);
 
-    memset(data.data(), 0, 100*100*sizeof(float));
-    data[50*100+50] = 100;
-    
-    map = new Library::Map(context, 100, 100, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
+    memset(data.data(), 0, 256*256*sizeof(float));
+    data[128*256+128] = 4000;
+    data[30*256+200] = 4000;
+    data[150*256+50] = 4000;
+    data[200*256+20] = 4000;
+    data[90*256+190] = 4000;
+    data[40*256+30] = 4000;
+
+    map = new Library::Map(context, 256, 256, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
 }
 
 void BaseLayer::onDetach()
@@ -28,8 +33,10 @@ void BaseLayer::onDetach()
 
 void BaseLayer::Update()
 {
+    map->DispatchCompute(false);
 }
 
 void BaseLayer::Render()
 {
+    map->Render();
 }
