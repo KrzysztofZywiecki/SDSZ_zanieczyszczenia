@@ -1,29 +1,35 @@
 #include "BaseLayer.h"
 
 #include <iostream>
+#include <ctime>
+#include <random>
 
 std::vector<float> data;
 
 BaseLayer::BaseLayer(Library::Context* context)
 	:context(context)
 {
-
+    
 }
 
 void BaseLayer::onAttach()
 {
+    int size = 256;     //Rozdzielczosc obrazka do obliczen
+
     std::cout<<"Attached!"<<std::endl;
-    data.resize(256*256);
+    data.resize(size*size);
 
-    memset(data.data(), 0, 256*256*sizeof(float));
-    data[128*256+128] = 4000;
-    data[30*256+200] = 4000;
-    data[150*256+50] = 4000;
-    data[200*256+20] = 4000;
-    data[90*256+190] = 4000;
-    data[40*256+30] = 4000;
+    srand(time(nullptr));
+    memset(data.data(), 0, size*size*sizeof(float));
+    for(int i = 0; i < 10; i++)
+    {
+        int x = rand()%size;
+        int y = rand()%size;
+        
+        data[x*size + y] = 4000;
+    }
 
-    map = new Library::Map(context, 256, 256, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
+    map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
 }
 
 void BaseLayer::onDetach()

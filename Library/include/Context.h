@@ -11,7 +11,10 @@
 #include <iostream>
 #include <fstream>
 
-#define SIMULTANEOUS_FRAMES 1
+#include "ft2build.h"
+#include FT_FREETYPE_H
+
+#define SIMULTANEOUS_FRAMES 1 //Makro nie jest aktualnie uzywane
 
 namespace Library
 {
@@ -27,6 +30,7 @@ namespace Library
     {
         public:
             Context();
+            void InitFreetype();
             void InitVulkan(Window* window);
             void CleanUP();
 
@@ -47,6 +51,8 @@ namespace Library
             VkRenderPass renderPass;
             VkExtent2D windowExtent;
         private:
+            FT_Library FreetypeLibrary;
+
             Window* window;
             Instance instance;
 

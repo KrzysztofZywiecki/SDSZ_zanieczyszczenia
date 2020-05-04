@@ -6,6 +6,7 @@ namespace Library
     {
         window.Init();
         window.Create(800, 600, "Najlepsze okno");
+        context.InitFreetype();
         context.InitVulkan(&window);
     }
 
@@ -21,6 +22,7 @@ namespace Library
     {
         while(!window.WindowShouldClose())
         {
+            glfwSetTime(0);
             context.BeginFrame();
             context.BeginRendering();
             
@@ -38,6 +40,7 @@ namespace Library
             context.EndRendering();
             context.EndFrame();
             window.PollEvents();
+            std::cout<<(int)(1/glfwGetTime())<<std::endl;
         }
     }
 

@@ -8,6 +8,7 @@
 #include <optional>
 #include <set>
 
+#define MAX_TEXTURES 20
 
 #ifndef EXT_LISTS
 #define EXT_LISTS
@@ -81,7 +82,18 @@ namespace Library
             void PassOwnership(Buffer buffer, Ownership newOwner);
             void PassOwnership(Image image, Ownership newOwner);
             void TransitionImageLayout(Image image, VkImageLayout oldLayout, VkImageLayout newLayout, Ownership newOwner);
+        
+            VkDescriptorSetLayout GetStorageLayout(){return storageLayout;}
+            VkDescriptorSetLayout GetSamplerLayout(){return samplerLayout;};
         private:
             VkDeviceMemory AllocateMemory(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
+            void InitImages();
+            void CreateImageBindings(Image& image);
+
+            VkDescriptorPool texturePool;
+            VkDescriptorSetLayout storageLayout;
+            VkDescriptorSetLayout samplerLayout;
+
+            uint32_t textureCount;
     };
 }

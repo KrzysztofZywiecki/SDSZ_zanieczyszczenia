@@ -12,3 +12,4 @@ target_include_directories(Application PUBLIC "${CMAKE_PROJECT_SOURCE_DIR}/Libra
 "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(Application PUBLIC Library )
 
+add_custom_command(TARGET Application POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${PROJECT_SOURCE_DIR}/Library/vendor/freetype/win64/freetype.dll" "${PROJECT_BINARY_DIR}/Application/Debug/freetype.dll")

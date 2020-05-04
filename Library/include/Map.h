@@ -27,9 +27,7 @@ namespace Library
                 glm::vec2 texCoord;
             };
             void CreateVulkanObjects();
-            void CreateDescriptorSetLayouts();
             void CreatePipelineLayouts();
-            void CreateDescriptorSets();
 			void CreateBuffers();
             void CreateComputePipeline();
             void CreateGraphicsPipeline();
@@ -46,12 +44,6 @@ namespace Library
             size_t pixelSize;
             uint32_t width;
             uint32_t height;
-
-            VkDescriptorPool descriptorPool;
-            VkDescriptorSetLayout storageLayout;
-            VkDescriptorSetLayout sampledImageLayout;
-            VkDescriptorSet storageSets[2];
-            VkDescriptorSet sampledImage[2];
 
             Buffer vertexBuffer;
             Buffer indexBuffer;

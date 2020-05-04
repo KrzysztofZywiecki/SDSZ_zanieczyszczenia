@@ -50,10 +50,71 @@ namespace Library
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &queues.graphicsQueue);
         vkGetDeviceQueue(device, indices.computeFamily.value(), 0, &queues.computeQueue);
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &queues.presentQueue);
+    
+        InitImages();
+    }
+
+    void Device::InitImages()
+    {
+        VkDescriptorPoolSize poolSizes[2 * MAX_TEXTURES];
+        for(uint32_t i = 0; i < MAX_TEXTURES; i++)
+        {
+            poolSizes[2 * i].descriptorCount = 1;
+            poolSizes[2 * i].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+            poolSizes[2 * i + 1].descriptorCount = 1;
+            poolSizes[2 * i + 1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 2 * MAX_TEXTURES;
+        poolInfo.pPoolSizes = poolSizes;
+        poolInfo.maxSets = 2 * MAX_TEXTURES;
+        if(vkCreateDescriptorPool(device, &poolInfo, nullptr, &texturePool) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create image descriptor pool");
+        }
+
+        VkDescriptorSetLayoutBinding storageBinding = {};
+        storageBinding.binding = 0;
+        storageBinding.descriptorCount = 1;
+        storageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        storageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        storageBinding.pImmutableSamplers = nullptr;
+        VkDescriptorSetLayoutCreateInfo storageLayoutInfo = {};
+        storageLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        storageLayoutInfo.bindingCount = 1;
+        storageLayoutInfo.pBindings = &storageBinding;
+
+        VkDescriptorSetLayoutBinding samplerBinding = {};
+        samplerBinding.binding = 0;
+        samplerBinding.descriptorCount = 1;
+        samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerBinding.pImmutableSamplers = nullptr;
+        VkDescriptorSetLayoutCreateInfo samplerLayoutInfo = {};
+        samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        samplerLayoutInfo.bindingCount = 1;
+        samplerLayoutInfo.pBindings = &samplerBinding;
+
+        if(vkCreateDescriptorSetLayout(device, &storageLayoutInfo, nullptr, &storageLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create storage image layout");
+        }
+        if(vkCreateDescriptorSetLayout(device, &samplerLayoutInfo, nullptr, &samplerLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create sampled image layout");
+        }
+
+        textureCount = 0;
     }
 
     void Device::Destroy()
     {
+        vkDestroyDescriptorPool(device, texturePool, nullptr);
+        vkDestroyDescriptorSetLayout(device, storageLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device, samplerLayout, nullptr);
         vkDestroyDevice(device, nullptr);
     }
 
@@ -242,6 +303,54 @@ namespace Library
         vkFreeMemory(device, buffer.memory, nullptr);
     }
 
+    void Device::CreateImageBindings(Image& image)
+    {
+        if(textureCount >= MAX_TEXTURES)
+        {
+            throw std::runtime_error("Max texture count exceeded!");
+        }
+        VkDescriptorSetLayout layouts[] = {storageLayout, samplerLayout};
+
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.pSetLayouts = layouts;
+        allocInfo.descriptorSetCount = 2;
+        allocInfo.descriptorPool = texturePool;
+        VkDescriptorSet sets[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+        if(vkAllocateDescriptorSets(device, &allocInfo, sets) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate texture descriptor sets");
+        }
+
+        VkDescriptorImageInfo imageInfo = {};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        imageInfo.imageView = image.imageView;
+        imageInfo.sampler = image.sampler;
+
+        VkWriteDescriptorSet storageWrite = {};
+        storageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        storageWrite.pTexelBufferView = nullptr;
+        storageWrite.pImageInfo = &imageInfo;
+        storageWrite.pBufferInfo = nullptr;
+        storageWrite.dstBinding = 0;
+        storageWrite.dstArrayElement = 0;
+        storageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        storageWrite.descriptorCount = 1;
+        storageWrite.dstSet = sets[0];
+
+        VkWriteDescriptorSet samplerWrite = {};
+        samplerWrite = storageWrite;
+        samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerWrite.dstSet = sets[1];
+
+        VkWriteDescriptorSet writes[] = {storageWrite, samplerWrite};
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+
+        image.storageBinding = sets[0];
+        image.samplerBinding = sets[1];
+        textureCount ++;
+    }
+
     Image Device::CreateImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, Ownership owner, void* data, size_t size)
     {
         Image image;
@@ -330,6 +439,8 @@ namespace Library
             TransitionImageLayout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, owner);
             DestroyBuffer(imageBuffer);
         }
+
+        CreateImageBindings(image);
         return image;
     }
 
@@ -406,9 +517,10 @@ namespace Library
 
         image.owner = COMPUTE;
         TransitionImageLayout(image, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_GENERAL, COMPUTE);
-		return image;
+        
+        CreateImageBindings(image);
+        return image;
     }
-
 
     void Device::CreateCommandPools()
     {

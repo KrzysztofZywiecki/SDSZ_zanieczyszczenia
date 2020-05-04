@@ -7,6 +7,11 @@ namespace Library
 
     }
 
+    void Context::InitFreetype()
+    {
+        FT_Init_FreeType(&FreetypeLibrary);
+    }
+
     void Context::InitVulkan(Window* window)
     {
         this-> window = window;
@@ -43,6 +48,7 @@ namespace Library
         vkDestroySwapchainKHR(device.device, swapChain, nullptr);
         device.Destroy();
         instance.Destroy();
+        FT_Done_FreeType(FreetypeLibrary);
     }
 
     VkPhysicalDevice Context::PickPhysicalDevice()
@@ -52,14 +58,24 @@ namespace Library
         std::vector<VkPhysicalDevice> devices(count);
         vkEnumeratePhysicalDevices(instance.GetInstance(), &count, devices.data());
         VkPhysicalDevice physicalDevice;
-        for(auto device : devices)
+        int index;
+
+        int best_score = -1;
+        int best_index = -1;
+        for(index = 0; index < devices.size(); index++)
         {
-            if(IsDeviceSuitable(device, instance.GetSurface()) == 1000)
+            int score = IsDeviceSuitable(devices[index], instance.GetSurface());
+            if(score > best_score)
             {
-                physicalDevice = device;
-                break;
+                best_score = score;
+                best_index = index;
             }
         }
+        if(best_index == -1)
+        {
+            throw std::runtime_error("Couldn't find suitable physical device");
+        }
+        physicalDevice = devices[best_index];
         VkPhysicalDeviceProperties properties = {};
         vkGetPhysicalDeviceProperties(physicalDevice, &properties);
         std::cout << properties.deviceName << std::endl;
