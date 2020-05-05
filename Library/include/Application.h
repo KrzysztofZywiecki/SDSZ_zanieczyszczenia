@@ -2,6 +2,7 @@
 #include "LayerStack.h"
 #include "Window.h"
 #include "Context.h"
+#include "Renderer.h"
 
 namespace Library
 {
@@ -15,6 +16,7 @@ namespace Library
         protected:
             Window window;
             Context context;
+            Renderer renderer;
             LayerStack layerStack;
     };
 

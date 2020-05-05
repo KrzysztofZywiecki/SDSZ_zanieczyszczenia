@@ -18,6 +18,8 @@ namespace Library
 
             VkDescriptorSet storageBinding;
             VkDescriptorSet samplerBinding;
+
+            uint32_t creationIndex;
     };
 
 }

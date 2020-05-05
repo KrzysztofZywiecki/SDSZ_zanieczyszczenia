@@ -6,11 +6,9 @@
 
 std::vector<float> data;
 
-BaseLayer::BaseLayer(Library::Context* context)
-	:context(context)
-{
-    
-}
+BaseLayer::BaseLayer(Library::Context* context, Library::Renderer* renderer)
+	:context(context), renderer(renderer)
+{}
 
 void BaseLayer::onAttach()
 {
@@ -30,6 +28,14 @@ void BaseLayer::onAttach()
     }
 
     map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
+
+    for(int i = 0; i < NKWADRATOW; i++)
+    {
+        rect[i].SetPosition({(double)rand()/RAND_MAX * 2 - 1, (double)rand()/RAND_MAX * 2 - 1, 0});
+        rect[i].SetScale({0.1, 0.03, 1.0});
+        rect[i].SetRotation((double)rand()/RAND_MAX * 3.141592 * 2.0);
+    }
+
 }
 
 void BaseLayer::onDetach()
@@ -45,4 +51,10 @@ void BaseLayer::Update()
 void BaseLayer::Render()
 {
     map->Render();
+
+    for(int i = 0; i < NKWADRATOW; i++)
+    {
+        renderer->Render(rect[i]);
+    }
+
 }

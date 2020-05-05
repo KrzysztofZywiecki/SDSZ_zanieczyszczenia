@@ -242,11 +242,14 @@ namespace Library
                 VkMemoryRequirements memoryRequirements = {};
                 vkGetBufferMemoryRequirements(device, buffer, &memoryRequirements);
                 memory = AllocateMemory(memoryRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-                void* destination;
-                vkMapMemory(device, memory, 0, size, 0, &destination);
-                memcpy(destination, data, size);
-                vkUnmapMemory(device, memory);
-                vkBindBufferMemory(device, buffer, memory, 0);
+				if (data != nullptr)
+				{
+					void* destination;
+					vkMapMemory(device, memory, 0, size, 0, &destination);
+					memcpy(destination, data, size);
+					vkUnmapMemory(device, memory);
+				}
+				vkBindBufferMemory(device, buffer, memory, 0);
             }
             break;
             case STATIC:
@@ -348,6 +351,7 @@ namespace Library
 
         image.storageBinding = sets[0];
         image.samplerBinding = sets[1];
+        image.creationIndex = textureCount;
         textureCount ++;
     }
 

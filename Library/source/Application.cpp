@@ -8,10 +8,12 @@ namespace Library
         window.Create(800, 600, "Najlepsze okno");
         context.InitFreetype();
         context.InitVulkan(&window);
+        renderer.Init(&context);
     }
 
     Application::~Application()
     {
+        renderer.CleanUP();
 		layerStack.Clear();
         context.CleanUP();
         window.Destroy();
@@ -23,6 +25,7 @@ namespace Library
         while(!window.WindowShouldClose())
         {
             glfwSetTime(0);
+            renderer.Reset();
             context.BeginFrame();
             context.BeginRendering();
             
@@ -37,6 +40,7 @@ namespace Library
             {
                 layer->Render();
             }
+            renderer.Submit();
             context.EndRendering();
             context.EndFrame();
             window.PollEvents();
