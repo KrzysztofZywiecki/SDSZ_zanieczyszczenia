@@ -30,11 +30,15 @@ namespace Library
 
     void Context::CleanUP()
     {
-        vkDestroySemaphore(device.device, computationFinishedSemaphore, nullptr);
-        vkDestroySemaphore(device.device, imageRenderedSemaphore, nullptr);
-        vkDestroySemaphore(device.device, imageAcquiredSemaphore, nullptr);
+        for(uint32_t i = 0; i < SIMULTANEOUS_FRAMES; i++)
+        {
+            vkDestroySemaphore(device.device, imageAcquiredSemaphores[i], nullptr);
+            vkDestroySemaphore(device.device, imageRenderedSemaphores[i], nullptr);
+            vkDestroySemaphore(device.device, computationFinishedSemaphores[i], nullptr);
+            vkDestroyFence(device.device, presentationFinishedFences[i], nullptr);
+        }
         vkFreeCommandBuffers(device.device, device.commandPools.graphicsPool, 
-            static_cast<uint32_t>(renderingCommandBuffers.size()), renderingCommandBuffers.data());
+             static_cast<uint32_t>(renderingCommandBuffers.size()), renderingCommandBuffers.data());
         device.DestroyCommandPools();
         for(auto framebuffer : framebuffers)
         {
@@ -372,8 +376,8 @@ namespace Library
         submitInfo.pCommandBuffers = renderingCommandBuffers.data() + imageIndex;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &imageRenderedSemaphore;
-        submitInfo.pWaitSemaphores = &imageAcquiredSemaphore;
+        submitInfo.pSignalSemaphores = &imageRenderedSemaphores[currentFrame];
+        submitInfo.pWaitSemaphores = &imageAcquiredSemaphores[currentFrame];
     }
 
     void Context::CreateSyncObjects()
@@ -381,33 +385,57 @@ namespace Library
         VkSemaphoreCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        vkCreateSemaphore(device.device, &createInfo, nullptr, &imageRenderedSemaphore);
-        vkCreateSemaphore(device.device, &createInfo, nullptr, &imageAcquiredSemaphore);
-        vkCreateSemaphore(device.device, &createInfo, nullptr, &computationFinishedSemaphore);
+        VkFenceCreateInfo fenceInfo = {};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        imageAcquiredSemaphores.resize(SIMULTANEOUS_FRAMES);
+        imageRenderedSemaphores.resize(SIMULTANEOUS_FRAMES);
+        computationFinishedSemaphores.resize(SIMULTANEOUS_FRAMES);
+
+        presentationFinishedFences.resize(SIMULTANEOUS_FRAMES);
+        imageFences.resize(swapChainImages.size(), VK_NULL_HANDLE);
+
+        for(uint32_t i = 0; i < SIMULTANEOUS_FRAMES; i++)
+        {
+            vkCreateSemaphore(device.device, &createInfo, nullptr, imageAcquiredSemaphores.data() + i);
+            vkCreateSemaphore(device.device, &createInfo, nullptr, imageRenderedSemaphores.data() + i);
+            vkCreateSemaphore(device.device, &createInfo, nullptr, computationFinishedSemaphores.data() + i);
+            vkCreateFence(device.device, &fenceInfo, nullptr, presentationFinishedFences.data() + i);
+        }
     }
 
     void Context::BeginFrame()
     {
-        vkAcquireNextImageKHR(device.device, swapChain, UINT32_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &imageIndex);
+        vkWaitForFences(device.device, 1, presentationFinishedFences.data() + currentFrame, VK_TRUE, UINT32_MAX);
+        vkAcquireNextImageKHR(device.device, swapChain, UINT32_MAX, imageAcquiredSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    
+        if(imageFences[imageIndex] != VK_NULL_HANDLE)
+        {
+            vkWaitForFences(device.device, 1, imageFences.data() + imageIndex, VK_TRUE, UINT32_MAX);
+        }
+        imageFences[imageIndex] = presentationFinishedFences[currentFrame];
     }
 
     void Context::EndFrame()
     {
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         
-        VkSemaphore waitSemaphores[] = {computationFinishedSemaphore};
+        VkSemaphore waitSemaphores[] = {computationFinishedSemaphores[currentFrame]};
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pSignalSemaphores = &imageRenderedSemaphore;
+        submitInfo.pSignalSemaphores = &imageRenderedSemaphores[currentFrame];
         submitInfo.pWaitDstStageMask = &waitStage;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = renderingCommandBuffers.data() + imageIndex;
 
-        vkQueueSubmit(device.queues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkResetFences(device.device, 1, presentationFinishedFences.data() + currentFrame);
+
+        vkQueueSubmit(device.queues.graphicsQueue, 1, &submitInfo, presentationFinishedFences[currentFrame]);
     
 
         VkResult result;
@@ -418,11 +446,12 @@ namespace Library
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &swapChain;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &imageRenderedSemaphore;
+        presentInfo.pWaitSemaphores = &imageRenderedSemaphores[currentFrame];
         presentInfo.pResults = &result;
 
         vkQueuePresentKHR(device.queues.presentQueue, &presentInfo);
-        vkQueueWaitIdle(device.queues.presentQueue);
+    
+        currentFrame = (currentFrame + 1) % SIMULTANEOUS_FRAMES;
     }
 
     void Context::BeginComputeOperations()
@@ -443,9 +472,9 @@ namespace Library
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &imageAcquiredSemaphore;
+        submitInfo.pWaitSemaphores = &imageAcquiredSemaphores[currentFrame];
         submitInfo.pWaitDstStageMask = &waitStage;
-        submitInfo.pSignalSemaphores = &computationFinishedSemaphore;
+        submitInfo.pSignalSemaphores = &computationFinishedSemaphores[currentFrame];
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = computeCommandBuffers.data() + imageIndex;
 

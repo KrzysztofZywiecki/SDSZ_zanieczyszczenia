@@ -38,6 +38,10 @@ namespace Library
 
     void Renderer::Submit()
     {
+        if(rectangles.transforms.size() == 0)
+        {
+            return;
+        }
         VkCommandBuffer commandBuffer = context->GetRenderingBuffer();
 
 		rectangles.FillBuffers(context);

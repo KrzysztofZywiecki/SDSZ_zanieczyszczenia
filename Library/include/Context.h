@@ -14,7 +14,7 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 
-#define SIMULTANEOUS_FRAMES 1 //Makro nie jest aktualnie uzywane
+#define SIMULTANEOUS_FRAMES 2 //Makro nie jest aktualnie uzywane
 
 namespace Library
 {
@@ -50,6 +50,9 @@ namespace Library
             Device device;
             VkRenderPass renderPass;
             VkExtent2D windowExtent;
+
+            std::vector<VkFence> presentationFinishedFences;
+
         private:
             FT_Library FreetypeLibrary;
 
@@ -61,14 +64,19 @@ namespace Library
             std::vector<VkImage> swapChainImages;
             std::vector<VkImageView> swapChainImageViews;
             std::vector<VkFramebuffer> framebuffers;
-            
-            VkSemaphore imageAcquiredSemaphore;
-            VkSemaphore imageRenderedSemaphore;
-            VkSemaphore computationFinishedSemaphore;
+
+
+            std::vector<VkSemaphore> imageAcquiredSemaphores;
+            std::vector<VkSemaphore> imageRenderedSemaphores;
+            std::vector<VkSemaphore> computationFinishedSemaphores;
+
+            std::vector<VkFence> imageFences;
+
             std::vector<VkCommandBuffer> renderingCommandBuffers;
             std::vector<VkCommandBuffer> computeCommandBuffers;
 
             uint32_t imageIndex;
+            uint32_t currentFrame = 0;
 
             VkFormat swapChainImageFormat;
 

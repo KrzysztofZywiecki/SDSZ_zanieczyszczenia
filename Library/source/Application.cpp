@@ -13,6 +13,7 @@ namespace Library
 
     Application::~Application()
     {
+        vkWaitForFences(context.device.device, SIMULTANEOUS_FRAMES, context.presentationFinishedFences.data(), VK_TRUE, UINT32_MAX);
         renderer.CleanUP();
 		layerStack.Clear();
         context.CleanUP();
