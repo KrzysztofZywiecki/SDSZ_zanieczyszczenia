@@ -4,6 +4,7 @@
 
 #include "Context.h"
 
+#include "TexturedQuad.h"
 #include "Rectangle.h"
 #include <map>
 #include <vector>
@@ -16,26 +17,29 @@ namespace Library
     class Renderer
     {
         public:
-            void Render(Rectangle& drawable);
+            void Render(TexturedQuad& quad);
         
             void Init(Context* context);
             void Reset();
             void Submit();
             void CleanUP();
         private:
-            struct RenderUnit
+            struct Unit
             {
                 Buffer vertexBuffer;
                 Buffer indexBuffer;
                 uint32_t indexCount;
 
-                std::vector<glm::mat4> transforms;
+                std::vector<TexturedQuad::Transform> transforms;
                 std::vector<Buffer> buffers;
 
                 void FillBuffers(Context* context);
                 void Reset();
                 void Clear(Context* context);
+                TextureAtlas* texture;
             };
+
+            Unit rectangles;
 
             void CreateVulkanObjects();
 
@@ -46,7 +50,6 @@ namespace Library
             VkPipeline graphicsPipeline;
             VkPipelineLayout graphicsPipelineLayout;
 
-            RenderUnit rectangles;
             VkCommandBuffer* renderingCommandBuffer;
 
     };

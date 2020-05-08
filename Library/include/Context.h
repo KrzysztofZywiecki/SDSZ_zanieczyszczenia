@@ -14,7 +14,7 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 
-#define SIMULTANEOUS_FRAMES 2 //Makro nie jest aktualnie uzywane
+#define SIMULTANEOUS_FRAMES 2
 
 namespace Library
 {
@@ -52,6 +52,9 @@ namespace Library
             VkExtent2D windowExtent;
 
             std::vector<VkFence> presentationFinishedFences;
+
+            VkCommandPool GetGraphicsPool(){return device.commandPools.graphicsPool;};
+            VkCommandPool GetComputePool(){return device.commandPools.computePool;};
 
         private:
             FT_Library FreetypeLibrary;

@@ -36,6 +36,7 @@ namespace Library
             VkPipeline computePipeline;
             VkPipelineLayout computePipelineLayout;
             VkPipelineLayout graphicsPipelineLayout;
+
             Context* context;
             Image images[2];
 

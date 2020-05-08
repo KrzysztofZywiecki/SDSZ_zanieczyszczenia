@@ -38,19 +38,14 @@ namespace Library
         {
             sets[0] = images[1].storageBinding;
             sets[1] = images[0].storageBinding;
-            //sets[0] = storageSets[1];
-            //sets[1] = storageSets[0];
         }
         else
         {
             sets[0] = images[0].storageBinding;
             sets[1] = images[1].storageBinding;
-            //sets[0] = storageSets[0];
-            //sets[1] = storageSets[1];
         }
         vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 2, sets, 0, nullptr);
         vkCmdDispatch(context->GetComputeBuffer(), width/16, height/16, 1);
-
         VkImageMemoryBarrier memoryBarrier = {};
         memoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         memoryBarrier.image = images[imageIndex].image;
@@ -93,7 +88,6 @@ namespace Library
         memoryBarrier.subresourceRange.layerCount = 1;
         memoryBarrier.subresourceRange.levelCount = 1;
         //vkCmdPipelineBarrier(context->GetRenderingBuffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-
         imageIndex = imageIndex ? 0 : 1;
     }
 

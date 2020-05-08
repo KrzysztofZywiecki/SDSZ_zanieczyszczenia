@@ -5,7 +5,7 @@
 #include "Rectangle.h"
 #include "Renderer.h"
 
-#define NKWADRATOW 150
+#define NKWADRATOW 60
 
 class BaseLayer : public Library::Layer 
 {
@@ -18,7 +18,9 @@ class BaseLayer : public Library::Layer
     void Render();
 
     private:
-        Library::Rectangle rect[NKWADRATOW];
+		Library::Image texture;
+		Library::TextureAtlas atlas;
+        Library::TexturedQuad rect[NKWADRATOW];
 		Library::Context* context;
         Library::Renderer* renderer;
         Library::Map* map;

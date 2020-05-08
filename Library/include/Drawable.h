@@ -19,7 +19,6 @@ namespace Library
             glm::mat4 ApplyTransforms();
         private:
             Model model;
-            Image texture;
             glm::vec3 position;
             glm::vec3 scale;
             float rotation;

@@ -31,9 +31,10 @@ namespace Library
         vkDestroyPipeline(context->device.device, graphicsPipeline, nullptr);
     }
 
-    void Renderer::Render(Rectangle& rect)
+    void Renderer::Render(TexturedQuad& quad)
     {
-        rectangles.transforms.push_back(rect.ApplyTransforms());
+        rectangles.transforms.push_back(quad.ApplyTransforms_t());
+		rectangles.texture = quad.GetTexturePtr();
     }
 
     void Renderer::Submit()
@@ -48,7 +49,8 @@ namespace Library
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
         vkCmdBindIndexBuffer(commandBuffer, rectangles.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-        
+        VkDescriptorSet set = rectangles.texture->GetSamplerSet();
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &set, 0, nullptr);
         int batches = rectangles.transforms.size() / MAX_ENTITIES + (rectangles.transforms.size() % MAX_ENTITIES ? 0 : 1);
         int lastBatchCount = rectangles.transforms.size() % MAX_ENTITIES;
         for(int i = 0; i < batches; i++)
@@ -67,14 +69,14 @@ namespace Library
         }
     }
 
-    void Renderer::RenderUnit::FillBuffers(Context* context)
+    void Renderer::Unit::FillBuffers(Context* context)
     {
         int buffersToCreate = (transforms.size() / MAX_ENTITIES + 1) - buffers.size();
-        size_t dataSize = MAX_ENTITIES * sizeof(glm::mat4);
+        size_t dataSize = MAX_ENTITIES * sizeof(TexturedQuad::Transform);
 
         for(int i = 0; i < buffersToCreate; i++)
         {
-            buffers.push_back(context->device.CreateBuffer(nullptr, MAX_ENTITIES*sizeof(glm::mat4), DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+            buffers.push_back(context->device.CreateBuffer(nullptr, MAX_ENTITIES*sizeof(TexturedQuad::Transform), DYNAMIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
         }
 
         for(int i = 0; i < buffers.size() - 1; i++)
@@ -85,19 +87,19 @@ namespace Library
             vkUnmapMemory(context->device.device, buffers[i].memory);
         }
 
-        size_t endSize = (transforms.size() % MAX_ENTITIES) * sizeof(glm::mat4);
+        size_t endSize = (transforms.size() % MAX_ENTITIES) * sizeof(TexturedQuad::Transform);
         void* data;
         vkMapMemory(context->device.device, buffers[buffers.size()-1].memory, 0, endSize, 0, &data);
         memcpy(data, transforms.data() + (buffers.size()-1)*MAX_ENTITIES, endSize); 
         vkUnmapMemory(context->device.device, buffers[buffers.size()-1].memory);
     }
 
-    void Renderer::RenderUnit::Reset()
+    void Renderer::Unit::Reset()
     {
         transforms.clear();
     }
 
-    void Renderer::RenderUnit::Clear(Context* context)
+    void Renderer::Unit::Clear(Context* context)
     {
         for(Buffer buffer : buffers)
         {
@@ -115,12 +117,13 @@ namespace Library
 
     void Renderer::CreateGraphicsPipelineLayout()
     {
+        VkDescriptorSetLayout layout = context->device.GetSamplerLayout();
         VkPipelineLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layoutInfo.pushConstantRangeCount = 0;
         layoutInfo.pPushConstantRanges = nullptr;
-        layoutInfo.setLayoutCount = 0;
-        layoutInfo.pSetLayouts = nullptr;
+        layoutInfo.setLayoutCount = 1;
+        layoutInfo.pSetLayouts = &layout;
 
         if(vkCreatePipelineLayout(context->device.device, &layoutInfo, nullptr, &graphicsPipelineLayout) != VK_SUCCESS)
         {
@@ -196,10 +199,10 @@ namespace Library
         bindings[0].stride = sizeof(Model::Vertex);
         bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindings[1].binding = 1;
-        bindings[1].stride = sizeof(glm::mat4);
+        bindings[1].stride = sizeof(TexturedQuad::Transform);
         bindings[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        VkVertexInputAttributeDescription attributes[6];
+        VkVertexInputAttributeDescription attributes[8];
         attributes[0].binding = 0;
         attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributes[0].location = 0;
@@ -220,16 +223,25 @@ namespace Library
         attributes[4].binding = 1;
         attributes[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attributes[4].location = 4;
-        attributes[4].offset = 2 * sizeof(glm::vec4);;
+        attributes[4].offset = 2 * sizeof(glm::vec4);
         attributes[5].binding = 1;
         attributes[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attributes[5].location = 5;
-        attributes[5].offset = 3 * sizeof(glm::vec4);;
+        attributes[5].offset = 3 * sizeof(glm::vec4);
+
+        attributes[6].binding = 1;
+        attributes[6].format = VK_FORMAT_R32G32_SFLOAT;
+        attributes[6].location = 6;
+        attributes[6].offset = 4 * sizeof(glm::vec4);
+        attributes[7].binding = 1;
+        attributes[7].format = VK_FORMAT_R32G32_SFLOAT;
+        attributes[7].location = 7;
+        attributes[7].offset = 4 * sizeof(glm::vec4) + sizeof(glm::vec2);
 
         VkPipelineVertexInputStateCreateInfo vertexInputState = {};
         vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInputState.vertexBindingDescriptionCount = 2;
-        vertexInputState.vertexAttributeDescriptionCount = 6;
+        vertexInputState.vertexAttributeDescriptionCount = 8;
         vertexInputState.pVertexBindingDescriptions = bindings;
         vertexInputState.pVertexAttributeDescriptions = attributes;
 
