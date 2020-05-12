@@ -4,19 +4,44 @@ layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(set = 0, binding = 0, r32f) uniform image2D in_image;
 layout(set = 1, binding = 0, r32f) uniform image2D out_image;
+layout(set = 2, binding = 0, r32f) uniform image2D sources;
+layout(set = 3, binding = 0) uniform sampler2D difficulty;
+layout(set = 4, binding = 0) uniform sampler2D wind;
+layout(set = 5, binding = 0) uniform SimulationProperties 
+{
+    uint width;
+    uint height;
+    float timeScale;
+    float unitLength;
+} properties;
+
+layout(push_constant) uniform Time
+{
+    float value;
+}time;
 
 void main()
 {
-float neighbor1 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,0)).r;
-float neighbor2 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,0)).r;
-float neighbor3 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,-1)).r;
-float neighbor4 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
 
-float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
+    vec2 coords = vec2(gl_GlobalInvocationID.x/float(properties.width), gl_GlobalInvocationID.y/float(properties.height));
 
-float timeConst = 0.04;
-float mean = (neighbor1 + neighbor2 + neighbor3 + neighbor4)/4.0;
-float result = (1 - timeConst) * state + timeConst * mean;
+    vec2 wind_vec = texture(wind, coords).xy;
+    float difficulty_val = texture(difficulty, coords).x;
 
-	imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
+    float inflow = imageLoad(sources, ivec2(gl_GlobalInvocationID.xy)).r;
+
+    float neighbor1 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,0)).r;
+    float neighbor2 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,0)).r;
+    float neighbor3 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,-1)).r;
+    float neighbor4 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
+
+    float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
+
+    float timeConst = 0.04;
+    float mean = (neighbor1 + neighbor2 + neighbor3 + neighbor4)/4.0;
+    float result = (1 - timeConst) * state + timeConst * mean;
+
+    result = result + inflow * time.value;
+
+    imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
 }

@@ -11,9 +11,17 @@ namespace Library
 	void Map::CleanUp()
 	{
 		VkDevice device = context->device.device;
-		context->device.DestroyBuffer(vertexBuffer);
+		
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        vkDestroyDescriptorSetLayout(device, dispatchInfoSetLayout, nullptr);
+        
+        context->device.DestroyBuffer(vertexBuffer);
 		context->device.DestroyBuffer(indexBuffer);
-		context->device.DestroyImage(images[0]);
+		context->device.DestroyBuffer(dispatchInfo);
+        context->device.DestroyImage(sources);
+        context->device.DestroyImage(windMap);
+        context->device.DestroyImage(difficultyMap);
+        context->device.DestroyImage(images[0]);
 		context->device.DestroyImage(images[1]);
 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
@@ -25,15 +33,53 @@ namespace Library
     Map::Map(Context* context, uint32_t width, uint32_t height, void* data, VkFormat format, size_t pixelSize)
         :context(context), width(width), height(height), pixelSize(pixelSize)
     {
+        sources = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, width, height, COMPUTE, data, pixelSize);
         images[0] = context->device.CreateWriteOnlyImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, width, height, pixelSize);
-        images[1] = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, width, height, COMPUTE, data, pixelSize);
+        images[1] = context->device.CreateWriteOnlyImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, width, height, pixelSize);
         CreateVulkanObjects();
     }
 
-    void Map::DispatchCompute(bool acquireData)
+    void Map::SetDifficultyMap(uint32_t width, uint32_t height, void* data, VkFormat format, size_t pixelSize)
+    {
+        difficultyMap = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT, width, height, COMPUTE, data, pixelSize);
+    }
+
+    void Map::SetWind(uint32_t width, uint32_t height, void* data, VkFormat format, size_t pixelSize)
+    {
+        windMap = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT, width, height, COMPUTE, data, pixelSize);
+    }
+
+    void Map::SetSimulationProperties(float timeScale, float unitLength)
+    {
+        DispatchInfo info = {};
+        info.size_x = width;
+        info.size_y = height;
+        info.time_scale = timeScale;
+        info.unit_length = unitLength;
+        dispatchInfo = context->device.CreateBuffer(&info, sizeof(info), STATIC, COMPUTE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = dispatchInfo.buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet writeInfo = {};
+        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeInfo.descriptorCount = 1;
+        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeInfo.dstArrayElement = 0;
+        writeInfo.dstBinding = 0;
+        writeInfo.dstSet = dispatchInfoSet;
+        writeInfo.pBufferInfo = &bufferInfo;
+        writeInfo.pImageInfo = nullptr;
+        writeInfo.pTexelBufferView = nullptr;
+        vkUpdateDescriptorSets(context->device.device, 1, &writeInfo, 0, nullptr);
+    }
+
+    void Map::DispatchCompute(float frameTime)
     {
         vkCmdBindPipeline(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-        VkDescriptorSet sets[2];
+        VkDescriptorSet sets[6];
         if(imageIndex == 0)
         {
             sets[0] = images[1].storageBinding;
@@ -44,7 +90,13 @@ namespace Library
             sets[0] = images[0].storageBinding;
             sets[1] = images[1].storageBinding;
         }
-        vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 2, sets, 0, nullptr);
+        sets[2] = sources.storageBinding;
+        sets[3] = difficultyMap.samplerBinding;
+        sets[4] = windMap.samplerBinding;
+        sets[5] = dispatchInfoSet;
+
+        vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 6, sets, 0, nullptr);
+        vkCmdPushConstants(context->GetComputeBuffer(), computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &frameTime);
         vkCmdDispatch(context->GetComputeBuffer(), width/16, height/16, 1);
         VkImageMemoryBarrier memoryBarrier = {};
         memoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -101,10 +153,53 @@ namespace Library
 
     void Map::CreateVulkanObjects()
     {
+        CreateDescriptorSets();
         CreatePipelineLayouts();
         CreateBuffers();
         CreateComputePipeline();
         CreateGraphicsPipeline();
+    }
+
+    void Map::CreateDescriptorSets()
+    {
+        VkDescriptorPoolSize size = {};
+        size.descriptorCount = 1;
+        size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.maxSets = 1;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &size;
+        if(vkCreateDescriptorPool(context->device.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create descriptor pool");
+        }
+
+        VkDescriptorSetLayoutBinding binding = {};
+        binding.binding = 0;
+        binding.descriptorCount = 1;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binding.pImmutableSamplers = nullptr;
+        binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &binding;
+        if(vkCreateDescriptorSetLayout(context->device.device, &layoutInfo, nullptr, &dispatchInfoSetLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create descriptor set layout");
+        }
+
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.pSetLayouts = &dispatchInfoSetLayout;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.descriptorPool = descriptorPool;
+        if(vkAllocateDescriptorSets(context->device.device, &allocInfo, &dispatchInfoSet) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate descriptor set");
+        }
     }
 
     void Map::CreatePipelineLayouts()
@@ -114,11 +209,15 @@ namespace Library
 
         VkPipelineLayoutCreateInfo computeLayoutInfo = {};
         computeLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        computeLayoutInfo.setLayoutCount = 2;
-        VkDescriptorSetLayout layouts[] = {storageLayout, storageLayout};
+        computeLayoutInfo.setLayoutCount = 6;
+        VkDescriptorSetLayout layouts[] = {storageLayout, storageLayout, storageLayout, samplerLayout, samplerLayout, dispatchInfoSetLayout};
         computeLayoutInfo.pSetLayouts = layouts;
-        computeLayoutInfo.pushConstantRangeCount = 0;
-        computeLayoutInfo.pPushConstantRanges = nullptr;
+        VkPushConstantRange pushConstant = {};
+        pushConstant.offset = 0;
+        pushConstant.size = sizeof(float);
+        pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        computeLayoutInfo.pushConstantRangeCount = 1;
+        computeLayoutInfo.pPushConstantRanges = &pushConstant;
         if(vkCreatePipelineLayout(context->device.device, &computeLayoutInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create compute pipeline layout");

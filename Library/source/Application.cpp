@@ -33,7 +33,7 @@ namespace Library
             context.BeginComputeOperations();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
-                (*iterator)->Update();
+                (*iterator)->Update(frameTime);
             }
             context.EndComputeOperations();
             
@@ -45,7 +45,8 @@ namespace Library
             context.EndRendering();
             context.EndFrame();
             window.PollEvents();
-            std::cout<<(int)(1/glfwGetTime())<<std::endl;
+            frameTime = glfwGetTime();
+            std::cout<<(int)(1/frameTime)<<std::endl;
         }
     }
 

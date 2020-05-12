@@ -14,6 +14,7 @@ namespace Library
 
             void Run();
         protected:
+            float frameTime = 0;
             Window window;
             Context context;
             Renderer renderer;

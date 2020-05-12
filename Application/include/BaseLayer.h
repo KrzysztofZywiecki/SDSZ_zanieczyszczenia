@@ -14,7 +14,7 @@ class BaseLayer : public Library::Layer
     void onAttach();
     void onDetach();
 
-    void Update();
+    void Update(float frameTime);
     void Render();
 
     private:
