@@ -97,7 +97,7 @@ namespace Library
 
         vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 6, sets, 0, nullptr);
         vkCmdPushConstants(context->GetComputeBuffer(), computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &frameTime);
-        vkCmdDispatch(context->GetComputeBuffer(), width/16, height/16, 1);
+        vkCmdDispatch(context->GetComputeBuffer(), width/LOCAL_WORKGROUP, height/LOCAL_WORKGROUP, 1);
         VkImageMemoryBarrier memoryBarrier = {};
         memoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         memoryBarrier.image = images[imageIndex].image;

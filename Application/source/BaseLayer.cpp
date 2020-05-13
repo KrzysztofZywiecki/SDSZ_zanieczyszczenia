@@ -33,10 +33,10 @@ void BaseLayer::onAttach()
 
     map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
     float difficulty[] = {0.0f};
-    float wind[] = {1.0f, 1.0f};
-    map->SetDifficultyMap(1, 1, wind, VK_FORMAT_R32_SFLOAT, sizeof(float));
-    map->SetWind(1, 1, wind, VK_FORMAT_R32G32_SFLOAT, 2*sizeof(float));
-    map->SetSimulationProperties(1.0f, 1.0f);
+    float wind[] = {0.5f, -0.5f, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5};
+    map->SetDifficultyMap(1, 1, difficulty, VK_FORMAT_R32_SFLOAT, sizeof(float));
+    map->SetWind(2, 2, wind, VK_FORMAT_R32G32_SFLOAT, 2*sizeof(float));
+    map->SetSimulationProperties(0.04f, 1.0f);
 
     for(int i = 0; i < NKWADRATOW; i++)
     {

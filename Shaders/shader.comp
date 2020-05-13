@@ -1,6 +1,6 @@
 #version 460 core
 
-layout(local_size_x = 16, local_size_y = 16) in;
+layout(local_size_x = 32, local_size_y = 32) in;
 
 layout(set = 0, binding = 0, r32f) uniform image2D in_image;
 layout(set = 1, binding = 0, r32f) uniform image2D out_image;
@@ -22,26 +22,53 @@ layout(push_constant) uniform Time
 
 void main()
 {
-
+    float inflow = imageLoad(sources, ivec2(gl_GlobalInvocationID.xy)).r;
     vec2 coords = vec2(gl_GlobalInvocationID.x/float(properties.width), gl_GlobalInvocationID.y/float(properties.height));
+    float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
 
     vec2 wind_vec = texture(wind, coords).xy;
     float difficulty_val = texture(difficulty, coords).x;
 
-    float inflow = imageLoad(sources, ivec2(gl_GlobalInvocationID.xy)).r;
+    float neighbors[8]; //Lista sasiadow zgodnie z ruchem wskazowek zegara zaczynajac od kierunku NE
+    float windWeights[8]; //Iloczyn skalarny wektorow kierunkow do sasiadow i kierunku wiatru
+    float packages[8];
 
-    float neighbor1 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,0)).r;
-    float neighbor2 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,0)).r;
-    float neighbor3 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,-1)).r;
-    float neighbor4 = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
+    /* WIND CALCULATION */
 
-    float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
+    neighbors[0] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,1)).r;
+    neighbors[1] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,0)).r;
+    neighbors[2] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(1,-1)).r;
+    neighbors[3] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,-1)).r;
+    neighbors[4] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,-1)).r;
+    neighbors[5] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,0)).r;
+    neighbors[6] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,1)).r;
+    neighbors[7] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
 
-    float timeConst = 0.04;
-    float mean = (neighbor1 + neighbor2 + neighbor3 + neighbor4)/4.0;
-    float result = (1 - timeConst) * state + timeConst * mean;
+    windWeights[0] = dot(wind_vec, vec2(1,1));
+    windWeights[1] = dot(wind_vec, vec2(1,0));
+    windWeights[2] = dot(wind_vec, vec2(1,-1));
+    windWeights[3] = dot(wind_vec, vec2(0,-1));
+    windWeights[4] = dot(wind_vec, vec2(-1,-1));
+    windWeights[5] = dot(wind_vec, vec2(-1,0));
+    windWeights[6] = dot(wind_vec, vec2(-1,1));
+    windWeights[7] = dot(wind_vec, vec2(0,1));
 
-    result = result + inflow * time.value;
+    float balance = 0;
+
+    for(uint i = 0; i < 8; i++)
+    {
+        float divisor = i % 2 == 0 ? 1.0 : 0.5;
+        balance -= windWeights[i] < 0 ? neighbors[i] * windWeights[i] * divisor : state * windWeights[i] * divisor;
+    }
+
+    /* DIFFUSION CALCULATION */
+
+    float diffusion = (neighbors[1] + neighbors[3] + neighbors[5] + neighbors[7]) * 1.4142136;
+    diffusion += (neighbors[0] + neighbors[2] + neighbors[4] + neighbors[6]);
+    diffusion /= 2.4142136 * 4;
+
+    float time = time.value * 5;
+    float result = (state * (1 - time)) + (( diffusion + balance )* time) + inflow * time;
 
     imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
 }

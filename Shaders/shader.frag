@@ -26,4 +26,5 @@ void main()
 	{
 		outColor = texture(tex, tex_coord);
 	}
+	//outColor = texture(tex, tex_coord);
 }

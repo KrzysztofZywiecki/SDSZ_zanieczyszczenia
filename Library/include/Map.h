@@ -2,6 +2,8 @@
 
 #include "Context.h"
 
+#define LOCAL_WORKGROUP 32
+
 namespace Library
 {
 

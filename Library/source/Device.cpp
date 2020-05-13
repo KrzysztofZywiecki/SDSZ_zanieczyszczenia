@@ -91,7 +91,7 @@ namespace Library
         samplerBinding.binding = 0;
         samplerBinding.descriptorCount = 1;
         samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
         samplerBinding.pImmutableSamplers = nullptr;
         VkDescriptorSetLayoutCreateInfo samplerLayoutInfo = {};
         samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
