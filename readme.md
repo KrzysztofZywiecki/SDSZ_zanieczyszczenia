@@ -6,7 +6,7 @@ W folderze głównym tworzymy folder o nazwie "build", a następnie uruchamiamy 
 
 Mając stworzony projekt możemy skompilować pliki korzystając z naszego środowiska, albo wywołując komendę "CMake --build ."
 
-Po skompilowaniu projektu trzeba przekopiować folder "/Shaders" do folderu "/build/Application/Debug". Aplikacja nie zadziała poprawnie bez shaderów.
+Po skompilowaniu projektu trzeba przekopiować foldery "/Shaders" oraz "/Resources" do folderu "/build/Application/Debug". Aplikacja nie zadziała poprawnie bez shaderów. Nie wiem czy zadziała bez "Resources", ale nie testowałem
 
 # Notki co do edytowania
 

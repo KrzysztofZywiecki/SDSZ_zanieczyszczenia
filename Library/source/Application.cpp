@@ -6,9 +6,9 @@ namespace Library
     {
         window.Init();
         window.Create(800, 600, "Najlepsze okno");
-        context.InitFreetype();
         context.InitVulkan(&window);
         renderer.Init(&context);
+        context.InitFreetype();
     }
 
     Application::~Application()
@@ -46,7 +46,7 @@ namespace Library
             context.EndFrame();
             window.PollEvents();
             frameTime = glfwGetTime();
-            std::cout<<(int)(1/frameTime)<<std::endl;
+            std::cout<<int(1/frameTime)<<std::endl;
         }
     }
 

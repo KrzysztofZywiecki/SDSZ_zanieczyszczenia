@@ -15,7 +15,7 @@ namespace Library
 
 	TextureAtlas::TextureAtlas()
 	{
-
+        
 	}
 
     VkDescriptorSet TextureAtlas::GetSamplerSet()

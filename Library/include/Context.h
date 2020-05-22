@@ -44,7 +44,8 @@ namespace Library
         
             VkCommandBuffer GetComputeBuffer(){return computeCommandBuffers[imageIndex];}
             VkCommandBuffer GetRenderingBuffer(){return renderingCommandBuffers[imageIndex];}
-           
+            FT_Library GetFreetype(){return FreetypeLibrary;};
+
             VkShaderModule CreateShaderModule(const char* path);
 
             Device device;
@@ -56,8 +57,11 @@ namespace Library
             VkCommandPool GetGraphicsPool(){return device.commandPools.graphicsPool;};
             VkCommandPool GetComputePool(){return device.commandPools.computePool;};
 
+            Image font;
+
         private:
             FT_Library FreetypeLibrary;
+            FT_Face fontFace;
 
             Window* window;
             Instance instance;

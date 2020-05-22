@@ -24,12 +24,12 @@ namespace Library
             void Submit();
             void CleanUP();
         private:
+            Buffer vertexBuffer;
+            Buffer indexBuffer;
+            uint32_t indexCount;
+            
             struct Unit
             {
-                Buffer vertexBuffer;
-                Buffer indexBuffer;
-                uint32_t indexCount;
-
                 std::vector<TexturedQuad::Transform> transforms;
                 std::vector<Buffer> buffers;
 

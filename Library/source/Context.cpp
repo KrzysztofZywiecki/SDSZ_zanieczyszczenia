@@ -10,6 +10,11 @@ namespace Library
     void Context::InitFreetype()
     {
         FT_Init_FreeType(&FreetypeLibrary);
+        FT_New_Face(FreetypeLibrary, "Resources/Roboto-Regular.ttf", 0, &fontFace);
+        FT_Set_Pixel_Sizes(fontFace, 0, 32);
+        FT_Load_Char(fontFace, 'A', FT_LOAD_RENDER);
+        unsigned char* data = fontFace->glyph->bitmap.buffer;
+        font = device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, fontFace->glyph->bitmap.width, fontFace->glyph->bitmap.rows, GRAPHICS, data, sizeof(char));
     }
 
     void Context::InitVulkan(Window* window)
@@ -30,6 +35,9 @@ namespace Library
 
     void Context::CleanUP()
     {
+        device.DestroyImage(font);
+        FT_Done_Face(fontFace);
+        FT_Done_FreeType(FreetypeLibrary);
         for(uint32_t i = 0; i < SIMULTANEOUS_FRAMES; i++)
         {
             vkDestroySemaphore(device.device, imageAcquiredSemaphores[i], nullptr);
@@ -52,7 +60,6 @@ namespace Library
         vkDestroySwapchainKHR(device.device, swapChain, nullptr);
         device.Destroy();
         instance.Destroy();
-        FT_Done_FreeType(FreetypeLibrary);
     }
 
     VkPhysicalDevice Context::PickPhysicalDevice()

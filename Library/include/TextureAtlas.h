@@ -12,11 +12,11 @@ namespace Library
 			TextureAtlas();
 
             VkDescriptorSet GetSamplerSet();
-            glm::vec2 GetScale(){return scale;};
-            glm::vec2 GetOffset(uint32_t x, uint32_t y);
+            virtual glm::vec2 GetScale(){return scale;};
+            virtual glm::vec2 GetOffset(uint32_t x, uint32_t y);
             uint32_t GetIndex(){return index;};
             bool operator<(TextureAtlas& rhs);
-        private:
+        protected:
             Image* image;
             uint32_t x_tiles;
             uint32_t y_tiles;

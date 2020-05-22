@@ -14,9 +14,9 @@ namespace Library
                                             {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)} };
         std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
 
-        rectangles.vertexBuffer = context->device.CreateBuffer(vertices.data(), 4*sizeof(Model::Vertex), STATIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        rectangles.indexBuffer = context->device.CreateBuffer(indices.data(), 6*sizeof(uint32_t), STATIC, GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-        rectangles.indexCount = 6;
+        vertexBuffer = context->device.CreateBuffer(vertices.data(), 4*sizeof(Model::Vertex), STATIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        indexBuffer = context->device.CreateBuffer(indices.data(), 6*sizeof(uint32_t), STATIC, GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+        indexCount = 6;
     }
 
     void Renderer::Reset()
@@ -48,24 +48,24 @@ namespace Library
 		rectangles.FillBuffers(context);
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-        vkCmdBindIndexBuffer(commandBuffer, rectangles.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         VkDescriptorSet set = rectangles.texture->GetSamplerSet();
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &set, 0, nullptr);
         int batches = rectangles.transforms.size() / MAX_ENTITIES + (rectangles.transforms.size() % MAX_ENTITIES ? 0 : 1);
         int lastBatchCount = rectangles.transforms.size() % MAX_ENTITIES;
         for(int i = 0; i < batches; i++)
         {
-            VkBuffer vertexBuffers[] = {rectangles.vertexBuffer.buffer, rectangles.buffers[i].buffer};
+            VkBuffer vertexBuffers[] = {vertexBuffer.buffer, rectangles.buffers[i].buffer};
             VkDeviceSize offsets[] = {0,0};
             vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
-            vkCmdDrawIndexed(commandBuffer, rectangles.indexCount, MAX_ENTITIES, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, indexCount, MAX_ENTITIES, 0, 0, 0);
         }
         if(lastBatchCount != 0)
         {
-            VkBuffer vertexBuffers[] = {rectangles.vertexBuffer.buffer, rectangles.buffers[batches].buffer};
+            VkBuffer vertexBuffers[] = {vertexBuffer.buffer, rectangles.buffers[batches].buffer};
             VkDeviceSize offsets[] = {0,0};
             vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
-            vkCmdDrawIndexed(commandBuffer, rectangles.indexCount, lastBatchCount, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, indexCount, lastBatchCount, 0, 0, 0);
         }
     }
 
@@ -105,8 +105,6 @@ namespace Library
         {
             context->device.DestroyBuffer(buffer);
         }
-        context->device.DestroyBuffer(vertexBuffer);
-        context->device.DestroyBuffer(indexBuffer);
     }
 
     void Renderer::CreateVulkanObjects()
@@ -155,10 +153,16 @@ namespace Library
         dynamicState.pDynamicStates = nullptr;
 
         VkPipelineColorBlendAttachmentState attachment = {};
-        attachment.blendEnable = VK_FALSE;
+        attachment.blendEnable = VK_TRUE;
         attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
         VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        
+        attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        attachment.colorBlendOp = VK_BLEND_OP_ADD;
+        attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
         VkPipelineColorBlendStateCreateInfo colorBlendState = {};
         colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         colorBlendState.attachmentCount = 1;
