@@ -44,31 +44,36 @@ void main()
     neighbors[6] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,1)).r;
     neighbors[7] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
 
-    windWeights[0] = dot(wind_vec, vec2(1,1));
-    windWeights[1] = dot(wind_vec, vec2(1,0));
-    windWeights[2] = dot(wind_vec, vec2(1,-1));
-    windWeights[3] = dot(wind_vec, vec2(0,-1));
-    windWeights[4] = dot(wind_vec, vec2(-1,-1));
-    windWeights[5] = dot(wind_vec, vec2(-1,0));
-    windWeights[6] = dot(wind_vec, vec2(-1,1));
-    windWeights[7] = dot(wind_vec, vec2(0,1));
+    windWeights[0] = dot(wind_vec, vec2(1.0,1.0));
+    windWeights[1] = dot(wind_vec, vec2(1.0,0.0));
+    windWeights[2] = dot(wind_vec, vec2(1.0,-1.0));
+    windWeights[3] = dot(wind_vec, vec2(0.0,-1.0));
+    windWeights[4] = dot(wind_vec, vec2(-1.0,-1.0));
+    windWeights[5] = dot(wind_vec, vec2(-1.0,0.0));
+    windWeights[6] = dot(wind_vec, vec2(-1.0,1.0));
+    windWeights[7] = dot(wind_vec, vec2(0.0,1.0));
 
     float balance = 0;
 
     for(uint i = 0; i < 8; i++)
     {
-        float divisor = i % 2 == 0 ? 1.0 : 0.5;
+        float divisor = i % 2 == 0 ? 0.7071 : 1.0;
         balance -= windWeights[i] < 0 ? neighbors[i] * windWeights[i] * divisor : state * windWeights[i] * divisor;
     }
 
     /* DIFFUSION CALCULATION */
 
-    float diffusion = (neighbors[1] + neighbors[3] + neighbors[5] + neighbors[7]) * 1.4142136;
-    diffusion += (neighbors[0] + neighbors[2] + neighbors[4] + neighbors[6]);
-    diffusion /= 2.4142136 * 4;
+    float sum = 0;
+    for(uint i = 0; i < 8; i++)
+    {
+        float divisor = i % 2 == 0 ? 0.5 : 1.0;
+        sum += neighbors[i] * divisor;
+    }
+    sum += state;
+    float diffusion = sum/7.0;
 
-    float time = time.value * 5;
-    float result = (state * (1 - time)) + (( diffusion + balance )* time) + inflow * time;
+    float time = time.value;
+    float result = (state * (1 - time)) + (balance + diffusion + inflow) * time;
 
     imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
 }
