@@ -29,7 +29,7 @@ void BaseLayer::onAttach()
 	unsigned char tex[] = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
 	texture = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT,
         2, 2, Library::GRAPHICS, tex, 4*sizeof(unsigned char));
-	atlas = Library::TextureAtlas(&context->font, 1, 1);
+	atlas = Library::TextureAtlas(&texture, 2, 2);
 
     map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
     float difficulty[] = {0.0f};
@@ -41,13 +41,12 @@ void BaseLayer::onAttach()
     font = new Library::Font("Resources/Roboto-Regular.ttf", context->GetFreetype());
     fontImage = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, 8*FONT_SIZE, 8*FONT_SIZE, Library::GRAPHICS, font->GetData(), 4*sizeof(unsigned char));
     fontTextureAtlas = Library::TextureAtlas(&fontImage, 8, 8);
-    
     text = new Library::Text(font, &fontTextureAtlas, renderer, "Czytelny fragment\ntekstu w programie", {-0.9, -0.9}, 0.1);
 
     for(int i = 0; i < NKWADRATOW; i++)
     {
 		rect[i].UseTexture(&atlas);
-		rect[i].UseTile(0, 0);
+		rect[i].UseTile(rand()%2, rand()%2);
         rect[i].SetPosition({(double)rand()/RAND_MAX * 2 - 1, (double)rand()/RAND_MAX * 2 - 1, 0});
         rect[i].SetScale({0.1, 0.1, 1.0});
     }
@@ -75,4 +74,8 @@ void BaseLayer::Render()
 {
     map->Render();
     text->Render();
+    for(uint32_t i = 0; i < NKWADRATOW; i++)
+    {
+        renderer->Render(rect[i]);
+    }
 }

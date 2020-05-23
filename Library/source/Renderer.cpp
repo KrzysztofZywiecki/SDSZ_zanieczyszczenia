@@ -21,51 +21,74 @@ namespace Library
 
     void Renderer::Reset()
     {
-        rectangles.Reset();
+        for(auto batch : renderUnits)
+        {
+            batch.second->Reset();
+        }
     }
 
     void Renderer::CleanUP()
     {
-        rectangles.Clear(context);
+        for(auto batch : renderUnits)
+        {
+            batch.second->Clear(context);
+            delete batch.second;
+        }
+        context->device.DestroyBuffer(vertexBuffer);
+        context->device.DestroyBuffer(indexBuffer);
         vkDestroyPipelineLayout(context->device.device, graphicsPipelineLayout, nullptr);
         vkDestroyPipeline(context->device.device, graphicsPipeline, nullptr);
     }
 
     void Renderer::Render(TexturedQuad& quad)
     {
-        rectangles.transforms.push_back(quad.ApplyTransforms_t());
-		rectangles.texture = quad.GetTexturePtr();
+        uint32_t index = quad.GetTextureIndex();
+        auto iterator = renderUnits.find(index);
+        if(iterator == renderUnits.end())
+        {
+            auto ret = renderUnits.insert(std::pair<uint32_t, Unit*>(index, new Unit()));
+            ret.first->second->texture = quad.GetTexturePtr();
+			ret.first->second->transforms.push_back(quad.ApplyTransforms_t());
+        }
+		else
+		{
+			iterator->second->transforms.push_back(quad.ApplyTransforms_t());
+		}
+
     }
 
     void Renderer::Submit()
     {
-        if(rectangles.transforms.size() == 0)
-        {
-            return;
-        }
         VkCommandBuffer commandBuffer = context->GetRenderingBuffer();
-
-		rectangles.FillBuffers(context);
-
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-        VkDescriptorSet set = rectangles.texture->GetSamplerSet();
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &set, 0, nullptr);
-        int batches = rectangles.transforms.size() / MAX_ENTITIES + (rectangles.transforms.size() % MAX_ENTITIES ? 0 : 1);
-        int lastBatchCount = rectangles.transforms.size() % MAX_ENTITIES;
-        for(int i = 0; i < batches; i++)
+        for(auto batch : renderUnits)
         {
-            VkBuffer vertexBuffers[] = {vertexBuffer.buffer, rectangles.buffers[i].buffer};
-            VkDeviceSize offsets[] = {0,0};
-            vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
-            vkCmdDrawIndexed(commandBuffer, indexCount, MAX_ENTITIES, 0, 0, 0);
-        }
-        if(lastBatchCount != 0)
-        {
-            VkBuffer vertexBuffers[] = {vertexBuffer.buffer, rectangles.buffers[batches].buffer};
-            VkDeviceSize offsets[] = {0,0};
-            vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
-            vkCmdDrawIndexed(commandBuffer, indexCount, lastBatchCount, 0, 0, 0);
+            if(batch.second->transforms.size() == 0)
+            {
+                return;
+            }
+
+            batch.second->FillBuffers(context);
+
+            VkDescriptorSet set = batch.second->texture->GetSamplerSet();
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &set, 0, nullptr);
+            int batches = batch.second->transforms.size() / MAX_ENTITIES + (batch.second->transforms.size() % MAX_ENTITIES ? 0 : 1);
+            int lastBatchCount = batch.second->transforms.size() % MAX_ENTITIES;
+            for(int i = 0; i < batches; i++)
+            {
+                VkBuffer vertexBuffers[] = {vertexBuffer.buffer, batch.second->buffers[i].buffer};
+                VkDeviceSize offsets[] = {0,0};
+                vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
+                vkCmdDrawIndexed(commandBuffer, indexCount, MAX_ENTITIES, 0, 0, 0);
+            }
+            if(lastBatchCount != 0)
+            {
+                VkBuffer vertexBuffers[] = {vertexBuffer.buffer, batch.second->buffers[batches].buffer};
+                VkDeviceSize offsets[] = {0,0};
+                vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
+                vkCmdDrawIndexed(commandBuffer, indexCount, lastBatchCount, 0, 0, 0);
+            }
         }
     }
 

@@ -14,7 +14,7 @@
 namespace Library
 {
 
-    class Renderer
+    class Renderer  /* SPRITE RENDERER */
     {
         public:
             void Render(TexturedQuad& quad);
@@ -27,7 +27,7 @@ namespace Library
             Buffer vertexBuffer;
             Buffer indexBuffer;
             uint32_t indexCount;
-            
+
             struct Unit
             {
                 std::vector<TexturedQuad::Transform> transforms;
@@ -39,7 +39,7 @@ namespace Library
                 TextureAtlas* texture;
             };
 
-            Unit rectangles;
+            std::map<uint32_t, Unit*> renderUnits;
 
             void CreateVulkanObjects();
 
