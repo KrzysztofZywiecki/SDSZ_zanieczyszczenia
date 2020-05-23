@@ -306,7 +306,7 @@ namespace Library
         vkFreeMemory(device, buffer.memory, nullptr);
     }
 
-    void Device::CreateImageBindings(Image& image)
+    void Device::CreateImageBindings(Image& image, VkImageUsageFlags usage)
     {
         if(textureCount >= MAX_TEXTURES)
         {
@@ -329,30 +329,45 @@ namespace Library
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageInfo.imageView = image.imageView;
         imageInfo.sampler = image.sampler;
-
         VkWriteDescriptorSet storageWrite = {};
-        storageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        storageWrite.pTexelBufferView = nullptr;
-        storageWrite.pImageInfo = &imageInfo;
-        storageWrite.pBufferInfo = nullptr;
-        storageWrite.dstBinding = 0;
-        storageWrite.dstArrayElement = 0;
-        storageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        storageWrite.descriptorCount = 1;
-        storageWrite.dstSet = sets[0];
-
         VkWriteDescriptorSet samplerWrite = {};
-        samplerWrite = storageWrite;
-        samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerWrite.dstSet = sets[1];
+        uint32_t writeCount = 0;
+        VkWriteDescriptorSet writes[2];
+        if(usage & VK_IMAGE_USAGE_STORAGE_BIT)
+        {
+            storageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            storageWrite.pTexelBufferView = nullptr;
+            storageWrite.pImageInfo = &imageInfo;
+            storageWrite.pBufferInfo = nullptr;
+            storageWrite.dstBinding = 0;
+            storageWrite.dstArrayElement = 0;
+            storageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            storageWrite.descriptorCount = 1;
+            storageWrite.dstSet = sets[0];
+            writes[writeCount] = storageWrite;
+            writeCount++;
+        }
+        if(usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+        {
+            samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            samplerWrite.descriptorCount = 1;
+            samplerWrite.pImageInfo = &imageInfo;
+            samplerWrite.pTexelBufferView = nullptr;
+            samplerWrite.pBufferInfo = nullptr;
+            samplerWrite.dstBinding = 0;
+            samplerWrite.dstArrayElement = 0;
+            samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            samplerWrite.dstSet = sets[1];
+            writes[writeCount] = samplerWrite;
+            writeCount++;
+        }
 
-        VkWriteDescriptorSet writes[] = {storageWrite, samplerWrite};
-        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+        vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
 
         image.storageBinding = sets[0];
         image.samplerBinding = sets[1];
         image.creationIndex = textureCount;
-        textureCount ++;
+        textureCount++;
     }
 
     Image Device::CreateImage(VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, Ownership owner, void* data, size_t size)
@@ -444,7 +459,7 @@ namespace Library
             DestroyBuffer(imageBuffer);
         }
 
-        CreateImageBindings(image);
+        CreateImageBindings(image, usage);
         return image;
     }
 
@@ -522,7 +537,7 @@ namespace Library
         image.owner = COMPUTE;
         TransitionImageLayout(image, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_GENERAL, COMPUTE);
         
-        CreateImageBindings(image);
+        CreateImageBindings(image, usage);
         return image;
     }
 

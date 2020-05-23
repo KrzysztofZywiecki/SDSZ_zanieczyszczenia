@@ -56,12 +56,8 @@ namespace Library
 
             VkCommandPool GetGraphicsPool(){return device.commandPools.graphicsPool;};
             VkCommandPool GetComputePool(){return device.commandPools.computePool;};
-
-            Image font;
-
         private:
             FT_Library FreetypeLibrary;
-            FT_Face fontFace;
 
             Window* window;
             Instance instance;

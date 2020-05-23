@@ -88,7 +88,7 @@ namespace Library
         private:
             VkDeviceMemory AllocateMemory(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
             void InitImages();
-            void CreateImageBindings(Image& image);
+            void CreateImageBindings(Image& image, VkImageUsageFlags usage);
 
             VkDescriptorPool texturePool;
             VkDescriptorSetLayout storageLayout;
