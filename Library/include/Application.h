@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Context.h"
 #include "Renderer.h"
+#include "Events.h"
 
 namespace Library
 {

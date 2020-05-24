@@ -23,21 +23,12 @@ namespace Library
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        this->width = width;
+        this->height = height;
     }
 
     void Window::Destroy()
     {
         glfwDestroyWindow(window);
-    }
-
-    void Window::PollEvents()
-    {
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-    bool Window::WindowShouldClose()
-    {
-        return glfwWindowShouldClose(window);
     }
 }

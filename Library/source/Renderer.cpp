@@ -8,10 +8,10 @@ namespace Library
         this->context = context;
         CreateVulkanObjects();
 
-        std::vector<Model::Vertex> vertices = { {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
-                                            {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
-                                            {glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 1.0)},
-                                            {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)} };
+        std::vector<Model::Vertex> vertices = { {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 1.0)},
+                                            {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 1.0)},
+                                            {glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 0.0)},
+                                            {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 0.0)} };
         std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
 
         vertexBuffer = context->device.CreateBuffer(vertices.data(), 4*sizeof(Model::Vertex), STATIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -205,9 +205,9 @@ namespace Library
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         viewport.x = 0;
-        viewport.y = 0;
+        viewport.y = context->windowExtent.height;
         viewport.width = context->windowExtent.width;
-        viewport.height = context->windowExtent.height;
+        viewport.height = -float(context->windowExtent.height);
 
         VkPipelineViewportStateCreateInfo viewportState = {};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;

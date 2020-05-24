@@ -9,12 +9,12 @@ namespace Library
         FT_Face face;
         FT_New_Face(library, fontFile, 0, &face);
         FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
-        char characters[] = {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
+        char characters[] = {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"};
     
         data = new unsigned char[sheetSize];
         memset(data, 255, sheetSize);
 
-        for(uint32_t i = 0; i < 62; i++)
+        for(uint32_t i = 0; i < 64; i++)
         {
             char character = characters[i];
             FT_Load_Char(face, character, FT_LOAD_RENDER);
@@ -60,6 +60,14 @@ namespace Library
         else if(character >= '0' && character <= '9')
         {
             return character - '0' + 52;
+        }
+        else if (character == '.')
+        {
+            return 62;
+        }
+        else if(character == '-')
+        {
+            return 63;
         }
         else
         {

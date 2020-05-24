@@ -6,6 +6,8 @@
 #include "Rectangle.h"
 #include "Renderer.h"
 #include "Text.h"
+#include "Events.h"
+#include "ImageFile.h"
 
 #define NKWADRATOW 60
 

@@ -6,6 +6,7 @@ namespace Library
     {
         window.Init();
         window.Create(800, 600, "Najlepsze okno");
+        Events::Init(&window);
         context.InitVulkan(&window);
         renderer.Init(&context);
         context.InitFreetype();
@@ -23,9 +24,8 @@ namespace Library
 
     void Application::Run()
     {
-        while(!window.WindowShouldClose())
+        while(!Events::WindowShouldClose())
         {
-            glfwSetTime(0);
             renderer.Reset();
             context.BeginFrame();
             context.BeginRendering();
@@ -33,7 +33,7 @@ namespace Library
             context.BeginComputeOperations();
             for(auto iterator = layerStack.rbegin(); iterator != layerStack.rend(); iterator++)
             {
-                (*iterator)->Update(frameTime);
+                (*iterator)->Update(Events::GetFrameTime());
             }
             context.EndComputeOperations();
             
@@ -44,9 +44,7 @@ namespace Library
             renderer.Submit();
             context.EndRendering();
             context.EndFrame();
-            window.PollEvents();
-            frameTime = glfwGetTime();
-            std::cout<<int(1/frameTime)<<std::endl;
+            Events::PollEvents();    
         }
     }
 

@@ -330,9 +330,9 @@ namespace Library
 
         VkViewport viewport = {};
         viewport.width = context->windowExtent.width;
-        viewport.height = context->windowExtent.height;
+        viewport.height = -float(context->windowExtent.height);
         viewport.x = 0.0;
-        viewport.y = 0.0;
+        viewport.y = float(context->windowExtent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
