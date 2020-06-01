@@ -11,13 +11,6 @@
 
 #define NKWADRATOW 60
 
-enum AppState
-{
-    TIMELINE,
-    ADJUST_SETTINGS,
-    ADJUST_WIND
-};
-
 class BaseLayer : public Library::Layer 
 {
     public:
@@ -29,7 +22,6 @@ class BaseLayer : public Library::Layer
     void Render();
 
     private:
-        AppState state;
 		Library::Image texture;
         Library::Image fontImage;
         Library::TextureAtlas fontTextureAtlas;

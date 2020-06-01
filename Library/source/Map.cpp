@@ -79,41 +79,68 @@ namespace Library
     void Map::DispatchCompute(float frameTime)
     {
         vkCmdBindPipeline(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-        for(uint32_t i = 0; i < settings.customTimesteps * settings.windScale; i++)
+        VkDescriptorSet sets[6];
+        if(imageIndex == 0)
         {
-            frameTime = frameTime / float(settings.windScale);
-            VkDescriptorSet sets[6];
-            if(imageIndex == 0)
-            {
-                sets[0] = images[1].storageBinding;
-                sets[1] = images[0].storageBinding;
-            }
-            else
-            {
-                sets[0] = images[0].storageBinding;
-                sets[1] = images[1].storageBinding;
-            }
-            sets[2] = sources.storageBinding;
-            sets[3] = difficultyMap.samplerBinding;
-            sets[4] = windMap.samplerBinding;
-            sets[5] = dispatchInfoSet;
-
-            vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 6, sets, 0, nullptr);
-            vkCmdPushConstants(context->GetComputeBuffer(), computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &frameTime);
-            vkCmdDispatch(context->GetComputeBuffer(), width/LOCAL_WORKGROUP, height/LOCAL_WORKGROUP, 1);
-            imageIndex = imageIndex ? 0 : 1;
+            sets[0] = images[1].storageBinding;
+            sets[1] = images[0].storageBinding;
         }
+        else
+        {
+            sets[0] = images[0].storageBinding;
+            sets[1] = images[1].storageBinding;
+        }
+        sets[2] = sources.storageBinding;
+        sets[3] = difficultyMap.samplerBinding;
+        sets[4] = windMap.samplerBinding;
+        sets[5] = dispatchInfoSet;
+
+        vkCmdBindDescriptorSets(context->GetComputeBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 6, sets, 0, nullptr);
+        vkCmdPushConstants(context->GetComputeBuffer(), computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &frameTime);
+        vkCmdDispatch(context->GetComputeBuffer(), width/LOCAL_WORKGROUP, height/LOCAL_WORKGROUP, 1);
+        VkImageMemoryBarrier memoryBarrier = {};
+        memoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        memoryBarrier.image = images[imageIndex].image;
+        memoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+        memoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+        memoryBarrier.srcQueueFamilyIndex = context->device.indices.computeFamily.value();
+        memoryBarrier.dstQueueFamilyIndex = context->device.indices.graphicsFamily.value();
+        memoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        memoryBarrier.subresourceRange.baseArrayLayer = 0;
+        memoryBarrier.subresourceRange.baseMipLevel = 0;
+        memoryBarrier.subresourceRange.layerCount = 1;
+        memoryBarrier.subresourceRange.levelCount = 1;
+        vkCmdPipelineBarrier(context->GetComputeBuffer(), VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
     }
 
     void Map::Render()
     {
-        uint8_t index = imageIndex;
+        uint8_t index = imageIndex ? 0 : 1;
         vkCmdBindPipeline(context->GetRenderingBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
         vkCmdBindDescriptorSets(context->GetRenderingBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &(images + index)->samplerBinding, 0, nullptr);
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(context->GetRenderingBuffer(), 0, 1, &vertexBuffer.buffer, &offset);
         vkCmdBindIndexBuffer(context->GetRenderingBuffer(), indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexed(context->GetRenderingBuffer(), 6, 1, 0, 0, 0);    
+        vkCmdDrawIndexed(context->GetRenderingBuffer(), 6, 1, 0, 0, 0);
+        
+        VkImageMemoryBarrier memoryBarrier = {};
+        memoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        memoryBarrier.image = images[imageIndex].image;
+        memoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+        memoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        memoryBarrier.srcQueueFamilyIndex = context->device.indices.graphicsFamily.value();
+        memoryBarrier.dstQueueFamilyIndex = context->device.indices.computeFamily.value();
+        memoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        memoryBarrier.subresourceRange.baseArrayLayer = 0;
+        memoryBarrier.subresourceRange.baseMipLevel = 0;
+        memoryBarrier.subresourceRange.layerCount = 1;
+        memoryBarrier.subresourceRange.levelCount = 1;
+        //vkCmdPipelineBarrier(context->GetRenderingBuffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        imageIndex = imageIndex ? 0 : 1;
     }
 
     void Map::GetData(Buffer& buffer)

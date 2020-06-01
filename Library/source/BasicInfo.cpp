@@ -95,13 +95,10 @@ namespace Library
     {
     }
 
-	void Instance::Destroy()
-	{
-		vkDestroySurfaceKHR(instance, surface, nullptr);
-		if (validationEnabled)
-		{
-			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-		}
+    void Instance::Destroy()
+    {
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         vkDestroyInstance(instance, nullptr);
     }
 
