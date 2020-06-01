@@ -27,6 +27,12 @@ namespace Library
             uint32_t GetHeight(){return height;}
             uint32_t GetPixelSize(){return pixelSize;}
 
+            struct SimulationSettings
+            {
+                uint32_t customTimesteps = 1;
+                uint32_t windScale = 1;
+            };
+            SimulationSettings settings;
         private:
             struct Vertex
             {
@@ -41,6 +47,7 @@ namespace Library
                 float time_scale;
                 float unit_length;
             };
+
 
             void CreateVulkanObjects();
             void CreateDescriptorSets();

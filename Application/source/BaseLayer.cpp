@@ -12,7 +12,7 @@ BaseLayer::BaseLayer(Library::Context* context, Library::Renderer* renderer)
 
 void BaseLayer::onAttach()
 {
-    int size = 1024;     //Rozdzielczosc obrazka do obliczen
+    int size = 256;     //Rozdzielczosc obrazka do obliczen
 
     std::cout<<"Attached!"<<std::endl;
     data.resize(size*size);
@@ -45,6 +45,9 @@ void BaseLayer::onAttach()
     fontTextureAtlas = Library::TextureAtlas(&fontImage, 8, 8);
     text = new Library::Text(font, &fontTextureAtlas, renderer, "Czytelny fragment\ntekstu w programie", {-0.9, 0.9}, 0.1);
 
+    map->settings.customTimesteps = 2;
+    map->settings.windScale = 1;
+
     for(int i = 0; i < NKWADRATOW; i++)
     {
 		rect[i].UseTexture(&atlas);
@@ -53,6 +56,7 @@ void BaseLayer::onAttach()
         rect[i].SetScale({0.1, 0.1, 1.0});
     }
 
+    state = TIMELINE;
 }
 
 //Jakieś magiczne parametry
@@ -71,24 +75,50 @@ static float previousReadTime = 0.0;
 
 void BaseLayer::Update(float frameTime)
 {
-	
-    map->DispatchCompute(frameTime);
-	previousReadTime += frameTime;
-	if (previousReadTime > 1.0)
-	{
-		previousReadTime = 0.0;
-		text->UpdateText(std::string("FPS - " + Library::Text::FloatToString(1.0/frameTime,0)));
-	}
+    switch(state)
+    {
+        case TIMELINE:
+            map->DispatchCompute(frameTime);
+    
+            previousReadTime += frameTime;
+            if (previousReadTime > 1.0)
+            {
+                previousReadTime = 0.0;
+                text->UpdateText(std::string("FPS - " + Library::Text::FloatToString(1.0/frameTime,0)));
+            }
+        break;
+        case ADJUST_SETTINGS:
+
+        break;
+
+        case ADJUST_WIND:
+
+        break;
+    }
+
 }
 
 void BaseLayer::Render()
 {
-    map->Render();
-    text->Render();
-    glm::vec2 mousePos = Library::Events::GetNormalizedMousePosition();
-    rect[0].SetPosition({mousePos.x, mousePos.y, 0.0});
-    for(uint32_t i = 0; i < NKWADRATOW; i++)
+    switch(state)
     {
-        renderer->Render(rect[i]);
+        case TIMELINE:
+            map->Render();
+            text->Render();
+            glm::vec2 mousePos = Library::Events::GetNormalizedMousePosition();
+            rect[0].SetPosition({mousePos.x, mousePos.y, 0.0});
+            for(uint32_t i = 0; i < NKWADRATOW; i++)
+            {
+                renderer->Render(rect[i]);
+            }
+        break;
+        case ADJUST_SETTINGS:
+
+        break;
+
+        case ADJUST_WIND:
+
+        break;
     }
+
 }
