@@ -8,8 +8,15 @@
 #include "Text.h"
 #include "Events.h"
 #include "ImageFile.h"
+#include "ConfigFile.h"
 
 #define NKWADRATOW 60
+
+enum State
+{
+    PAUSED,
+    SIMULATING
+};
 
 class BaseLayer : public Library::Layer 
 {
@@ -22,6 +29,8 @@ class BaseLayer : public Library::Layer
     void Render();
 
     private:
+        ConfigFile* conf;
+        State state = SIMULATING;
 		Library::Image texture;
         Library::Image fontImage;
         Library::TextureAtlas fontTextureAtlas;

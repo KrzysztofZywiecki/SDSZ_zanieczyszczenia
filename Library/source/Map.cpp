@@ -49,13 +49,13 @@ namespace Library
         windMap = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, format, VK_IMAGE_USAGE_SAMPLED_BIT, width, height, COMPUTE, data, pixelSize);
     }
 
-    void Map::SetSimulationProperties(float timeScale, float unitLength)
+    void Map::SetSimulationProperties(float windStepCount, float diffusionStepCount, float unitLength)
     {
         DispatchInfo info = {};
-        info.size_x = width;
-        info.size_y = height;
-        info.time_scale = timeScale;
-        info.unit_length = unitLength;
+        info.size = width;
+        info.windStepCount = windStepCount;
+        info.diffusionStepCount = diffusionStepCount;
+        info.unitLength = unitLength;
         dispatchInfo = context->device.CreateBuffer(&info, sizeof(info), STATIC, COMPUTE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
         
         VkDescriptorBufferInfo bufferInfo = {};
@@ -113,6 +113,7 @@ namespace Library
         memoryBarrier.subresourceRange.layerCount = 1;
         memoryBarrier.subresourceRange.levelCount = 1;
         vkCmdPipelineBarrier(context->GetComputeBuffer(), VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        imageIndex = imageIndex ? 0 : 1;
     }
 
     void Map::Render()
@@ -140,7 +141,6 @@ namespace Library
         memoryBarrier.subresourceRange.layerCount = 1;
         memoryBarrier.subresourceRange.levelCount = 1;
         //vkCmdPipelineBarrier(context->GetRenderingBuffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-        imageIndex = imageIndex ? 0 : 1;
     }
 
     void Map::GetData(Buffer& buffer)

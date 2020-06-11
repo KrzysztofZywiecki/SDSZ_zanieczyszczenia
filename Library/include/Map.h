@@ -15,7 +15,7 @@ namespace Library
             
             void SetDifficultyMap( uint32_t width, uint32_t height, void* data, VkFormat format, size_t pixelSize );
             void SetWind( uint32_t width, uint32_t height, void* data, VkFormat format, size_t pixelSize );
-            void SetSimulationProperties(float timeScale, float unitLength);
+            void SetSimulationProperties(float windStepCount, float diffusionStepCount, float unitLength);
 
             void DispatchCompute(float FrameTime);
             void GetData(Buffer& buffer);
@@ -36,10 +36,10 @@ namespace Library
 
             struct DispatchInfo
             {
-                uint32_t size_x;
-                uint32_t size_y;
-                float time_scale;
-                float unit_length;
+                uint32_t size;
+                float windStepCount;
+                float diffusionStepCount;
+                float unitLength;
             };
 
             void CreateVulkanObjects();

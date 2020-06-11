@@ -438,7 +438,6 @@ namespace Library
     
 
         VkResult result;
-
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pImageIndices = &imageIndex;

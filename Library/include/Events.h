@@ -3,6 +3,8 @@
 #include "Window.h"
 #include <glm/glm.hpp>
 
+
+
 namespace Library
 {
 
@@ -15,8 +17,7 @@ namespace Library
             static glm::vec2 GetNormalizedMousePosition();
             static bool MouseClicked();
             static double GetFrameTime(){return previousTime;};
-            static bool KeyPressed(uint32_t key);
-            
+            static int KeyPressed(int key);
 
         private:
             Events();

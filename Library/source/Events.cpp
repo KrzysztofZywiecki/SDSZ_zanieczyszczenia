@@ -39,5 +39,10 @@ namespace Library
         return glm::vec2(xPosition, yPosition);
     }
 
+    int Events::KeyPressed(int key)
+    {
+        return glfwGetKey(window->getWindowPtr(), key);
+    }
+
 
 }

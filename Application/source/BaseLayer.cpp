@@ -24,7 +24,7 @@ void BaseLayer::onAttach()
         int x = rand()%size;
         int y = rand()%size;
         
-        data[x*size + y] = 5;
+        data[x*size + y] = 4.0;
     }
     Library::ImageFile imageFile("Resources/plik.png");
 	unsigned char* tex = imageFile.GetData();
@@ -35,10 +35,11 @@ void BaseLayer::onAttach()
 
     map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
     float difficulty[] = {0.0f};
-    float wind[] = {0.5f, -0.5f, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5};
+    float wind[] = {0.3f, -0.3f, 0.3, -0.3,
+                    -0.3, -0.3, -0.3, 0.3};
     map->SetDifficultyMap(1, 1, difficulty, VK_FORMAT_R32_SFLOAT, sizeof(float));
     map->SetWind(2, 2, wind, VK_FORMAT_R32G32_SFLOAT, 2*sizeof(float));
-    map->SetSimulationProperties(0.04f, 1.0f);
+    map->SetSimulationProperties(1.0f, 50.0f, 1.0f);
 
     font = new Library::Font("Resources/Roboto-Regular.ttf", context->GetFreetype());
     fontImage = context->device.CreateImage(VK_IMAGE_ASPECT_COLOR_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, 8*FONT_SIZE, 8*FONT_SIZE, Library::GRAPHICS, font->GetData(), 4*sizeof(unsigned char));
@@ -55,10 +56,6 @@ void BaseLayer::onAttach()
 
 }
 
-//Jakieś magiczne parametry
-//Realizm
-//Restart symulacji
-
 void BaseLayer::onDetach()
 {
     delete font;
@@ -71,14 +68,30 @@ static float previousReadTime = 0.0;
 
 void BaseLayer::Update(float frameTime)
 {
-	
-    map->DispatchCompute(frameTime);
-	previousReadTime += frameTime;
-	if (previousReadTime > 1.0)
-	{
-		previousReadTime = 0.0;
-		text->UpdateText(std::string("FPS - " + Library::Text::FloatToString(1.0/frameTime,0)));
-	}
+	switch(state)
+    {
+        case SIMULATING:
+
+        map->DispatchCompute(frameTime);
+        
+        if(Library::Events::KeyPressed(GLFW_KEY_SPACE))
+        {
+            state = PAUSED;
+        }
+        break;
+        case PAUSED:
+            if(Library::Events::KeyPressed(GLFW_KEY_R))
+            {
+                state = SIMULATING;
+            }
+        break;
+    }
+    previousReadTime += frameTime;
+    if (previousReadTime > 1.0)
+    {
+        previousReadTime = 0.0;
+        text->UpdateText(std::string("FPS - " + Library::Text::FloatToString(1.0/frameTime,0)));
+    }
 }
 
 void BaseLayer::Render()
@@ -89,6 +102,6 @@ void BaseLayer::Render()
     rect[0].SetPosition({mousePos.x, mousePos.y, 0.0});
     for(uint32_t i = 0; i < NKWADRATOW; i++)
     {
-        renderer->Render(rect[i]);
+        //renderer->Render(rect[i]);
     }
 }

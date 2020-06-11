@@ -9,9 +9,9 @@ layout(set = 3, binding = 0) uniform sampler2D difficulty;
 layout(set = 4, binding = 0) uniform sampler2D wind;
 layout(set = 5, binding = 0) uniform SimulationProperties 
 {
-    uint width;
-    uint height;
-    float timeScale;
+    uint size;
+    float windStepCount;
+    float diffusionStepCount;
     float unitLength;
 } properties;
 
@@ -23,15 +23,16 @@ layout(push_constant) uniform Time
 void main()
 {
     float inflow = imageLoad(sources, ivec2(gl_GlobalInvocationID.xy)).r;
-    vec2 coords = vec2(gl_GlobalInvocationID.x/float(properties.width), gl_GlobalInvocationID.y/float(properties.height));
+    vec2 coords = vec2(gl_GlobalInvocationID.x/float(properties.size), gl_GlobalInvocationID.y/float(properties.size));
     float state = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy)).r;
 
     vec2 wind_vec = texture(wind, coords).xy;
+    vec2 wind_vec_norm = normalize(wind_vec);
+
     float difficulty_val = texture(difficulty, coords).x;
 
     float neighbors[8]; //Lista sasiadow zgodnie z ruchem wskazowek zegara zaczynajac od kierunku NE
     float windWeights[8]; //Iloczyn skalarny wektorow kierunkow do sasiadow i kierunku wiatru
-    float packages[8];
 
     /* WIND CALCULATION */
 
@@ -44,36 +45,58 @@ void main()
     neighbors[6] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(-1,1)).r;
     neighbors[7] = imageLoad(in_image, ivec2(gl_GlobalInvocationID.xy) + ivec2(0,1)).r;
 
-    windWeights[0] = dot(wind_vec, vec2(1.0,1.0));
-    windWeights[1] = dot(wind_vec, vec2(1.0,0.0));
-    windWeights[2] = dot(wind_vec, vec2(1.0,-1.0));
-    windWeights[3] = dot(wind_vec, vec2(0.0,-1.0));
-    windWeights[4] = dot(wind_vec, vec2(-1.0,-1.0));
-    windWeights[5] = dot(wind_vec, vec2(-1.0,0.0));
-    windWeights[6] = dot(wind_vec, vec2(-1.0,1.0));
-    windWeights[7] = dot(wind_vec, vec2(0.0,1.0));
+    windWeights[0] = dot(wind_vec_norm, vec2(1.0,1.0))/0.5;
+    windWeights[1] = dot(wind_vec_norm, vec2(1.0,0.0));
+    windWeights[2] = dot(wind_vec_norm, vec2(1.0,-1.0))/0.5;
+    windWeights[3] = dot(wind_vec_norm, vec2(0.0,-1.0));
+    windWeights[4] = dot(wind_vec_norm, vec2(-1.0,-1.0))/0.5;
+    windWeights[5] = dot(wind_vec_norm, vec2(-1.0,0.0));
+    windWeights[6] = dot(wind_vec_norm, vec2(-1.0,1.0))/0.5;
+    windWeights[7] = dot(wind_vec_norm, vec2(0.0,1.0));
 
-    float balance = 0;
+    float minDot = 5;
+    float secondMinDot = 5;
+    float minVal;
+    float secondMinVal;
 
-    for(uint i = 0; i < 8; i++)
+    for(int i = 0; i < 8; i++)
     {
-        float divisor = i % 2 == 0 ? 0.7071 : 1.0;
-        balance -= windWeights[i] < 0 ? neighbors[i] * windWeights[i] * divisor : state * windWeights[i] * divisor;
+        if(windWeights[i] <= minDot)
+        {
+            secondMinDot = minDot;
+            secondMinVal = minVal;
+            minVal = neighbors[i];
+            minDot = windWeights[i];
+        }
+        else if(windWeights[i] <= secondMinDot)
+        {
+            secondMinDot = windWeights[i];
+            secondMinVal = neighbors[i];
+        }
     }
 
-    /* DIFFUSION CALCULATION */
+    float difference = secondMinVal - minVal;
+    float balance = (minVal /2.0 + secondMinVal / 2.0) * length(wind_vec) - state * length(wind_vec);
 
+    /* DIFFUSION CALCULATION */
+    float area = properties.unitLength * properties.unitLength;
     float sum = 0;
+
     for(uint i = 0; i < 8; i++)
     {
         float divisor = i % 2 == 0 ? 0.5 : 1.0;
         sum += neighbors[i] * divisor;
     }
+
+    //float diffusion = sum - 6.0 * state;
+    //diffusion = diffusion / area;
     sum += state;
-    float diffusion = sum/7.0;
+    float avgDiv = 1.0 + 6.0 / area;
+    float diffusion = (sum/avgDiv);
 
     float time = time.value;
-    float result = (state * (1 - time)) + (balance + diffusion + inflow) * time;
+    float totalSteps = properties.diffusionStepCount * properties.windStepCount;
+    float result = (state * (1 - (1/totalSteps))) + (diffusion + inflow/area) * (1/totalSteps) + balance * (1/properties.diffusionStepCount);
 
     imageStore(out_image, ivec2(gl_GlobalInvocationID.xy), vec4(result, 0.0, 0.0, 0.0));
 }
