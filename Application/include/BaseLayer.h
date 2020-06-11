@@ -29,6 +29,8 @@ class BaseLayer : public Library::Layer
     void Render();
 
     private:
+        uint32_t sampleNumber = 0;
+        float samplesPS = 0;
         ConfigFile* conf;
         State state = SIMULATING;
 		Library::Image texture;

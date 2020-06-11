@@ -64,7 +64,8 @@ void BaseLayer::onDetach()
     context->device.DestroyImage(fontImage);
 }
 
-static float previousReadTime = 0.0;
+static float timeElapsed = 0.0f;
+static float samples;
 
 void BaseLayer::Update(float frameTime)
 {
@@ -73,7 +74,15 @@ void BaseLayer::Update(float frameTime)
         case SIMULATING:
 
         map->DispatchCompute(frameTime);
-        
+        sampleNumber++;
+        samples += 1.0f;
+        timeElapsed += Library::Events::GetFrameTime();
+        if(timeElapsed > 1.0f)
+        {
+            samplesPS = samples;
+            samples = 0.0f;
+            timeElapsed = 0.0f;
+        }
         if(Library::Events::KeyPressed(GLFW_KEY_SPACE))
         {
             state = PAUSED;
@@ -86,12 +95,8 @@ void BaseLayer::Update(float frameTime)
             }
         break;
     }
-    previousReadTime += frameTime;
-    if (previousReadTime > 1.0)
-    {
-        previousReadTime = 0.0;
-        text->UpdateText(std::string("FPS - " + Library::Text::FloatToString(1.0/frameTime,0)));
-    }
+    text->UpdateText(std::string("Sample number - " + Library::Text::FloatToString(float(sampleNumber)/1000.0,2)) + "k\nWith " + Library::Text::FloatToString(samplesPS, 0) + " samples per second");
+    
 }
 
 void BaseLayer::Render()

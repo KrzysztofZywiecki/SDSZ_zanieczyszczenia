@@ -240,10 +240,10 @@ namespace Library
     {
         std::vector<Map::Vertex> vertices(4);
         std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
-        vertices[0] = {{-0.8, -0.8, 0.0},{0.0, 1.0}};
-        vertices[1] = {{0.8, -0.8, 0.0}, {1.0, 1.0}};
-        vertices[2] = {{0.8, 0.8, 0.0}, {1.0, 0.0}};
-        vertices[3] = {{-0.8, 0.8, 0.0}, {0.0, 0.0}};
+        vertices[0] = {{-1.0, -1.0, 0.0},{0.0, 1.0}};
+        vertices[1] = {{1.0, -1.0, 0.0}, {1.0, 1.0}};
+        vertices[2] = {{1.0, 0.7, 0.0}, {1.0, 0.0}};
+        vertices[3] = {{-1.0, 0.7, 0.0}, {0.0, 0.0}};
 
         vertexBuffer = context->device.CreateBuffer(vertices.data(), indices.size()*sizeof(Map::Vertex), STATIC, GRAPHICS, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         indexBuffer = context->device.CreateBuffer(indices.data(), indices.size()*sizeof(uint32_t), STATIC, GRAPHICS, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
