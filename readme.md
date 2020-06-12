@@ -6,11 +6,4 @@ W folderze głównym tworzymy folder o nazwie "build", a następnie uruchamiamy 
 
 Mając stworzony projekt możemy skompilować pliki korzystając z naszego środowiska, albo wywołując komendę "CMake --build ."
 
-Po skompilowaniu projektu trzeba przekopiować foldery "/Shaders" oraz "/Resources" do folderu "/build/Application/Debug". Aplikacja nie zadziała poprawnie bez shaderów. Nie wiem czy zadziała bez "Resources", ale nie testowałem
-
-# Notki co do edytowania
-
-Pliki możemy edytować korzystając z utworzonego projektu. Zapisane zmiany zostaną wpisane do edytowanych plików.
-Natomiast przy utworzeniu nowego pliku ten będzie tworzony w folderze "build" (nie to co chcemy). Trzeba go wtedy ręcznie przenosić do odpowiedniego folderu w /Application albo /Library.
-
-Zalecanym edytorem jest VS Code z otwartym folderem głównym, ale zabieramy sobie wtedy możliwość debugowania. Osobiście w takiej sytuacji otwieram plik projektu w Visual Studio i korzystam z jego debugera.
+Po skompilowaniu projektu trzeba przekopiować foldery "/Shaders" oraz "/Resources" oraz plik freetype.dll z folderu "/Library/vendor/freetype/win64"  do folderu "/build/Application/<Debug/Release>". Aplikacja nie zadziała poprawnie bez shaderów nich.

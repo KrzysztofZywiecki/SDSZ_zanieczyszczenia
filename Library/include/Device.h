@@ -13,7 +13,7 @@
 #ifndef EXT_LISTS
 #define EXT_LISTS
     #ifdef NDEBUG
-        static bool validationEnabled = true;
+        static bool validationEnabled = false;
     #else
         static bool validationEnabled = true;
     #endif
