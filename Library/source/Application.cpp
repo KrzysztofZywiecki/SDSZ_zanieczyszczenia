@@ -5,7 +5,7 @@ namespace Library
     Application::Application()
     {
         window.Init();
-        window.Create(800, 600, "Najlepsze okno");
+        window.Create(800, 600, "SDSZ zanieczyszczenia");
         Events::Init(&window);
         context.InitVulkan(&window);
         renderer.Init(&context);
