@@ -33,11 +33,9 @@ void BaseLayer::onAttach()
 
     map = new Library::Map(context, size, size, data.data(), VK_FORMAT_R32_SFLOAT, sizeof(float));
     float difficulty[] = {0.0f};
-    float wind[] = {0.3f, -0.3f, 0.3, -0.3, 0.0, 0.3,
-                    -0.3, -0.3, -0.3, 0.3, 0.3, -0.3,
-                    0.3, 0.0, 0.0, -0.3, -0.3, 0.0};
+    float wind[] = {0.5, 0.5};
     map->SetDifficultyMap(1, 1, difficulty, VK_FORMAT_R32_SFLOAT, sizeof(float));
-    map->SetWind(3, 3, wind, VK_FORMAT_R32G32_SFLOAT, 2*sizeof(float));
+    map->SetWind(1, 1, wind, VK_FORMAT_R32G32_SFLOAT, 2*sizeof(float));
     map->SetSimulationProperties(windSamples, diffusionSamples, 1.0f);
 
     font = new Library::Font("Resources/Roboto-Regular.ttf", context->GetFreetype());

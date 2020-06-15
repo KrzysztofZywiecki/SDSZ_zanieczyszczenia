@@ -346,7 +346,7 @@ namespace Library
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pInheritanceInfo = nullptr;
 
-        VkClearValue clearColor = {0.2, 0.3, 0.7, 1.0};
+        VkClearValue clearColor = {0.4, 0.4, 0.4, 1.0};
 
         VkRect2D renderArea = {};
         renderArea.extent = windowExtent;

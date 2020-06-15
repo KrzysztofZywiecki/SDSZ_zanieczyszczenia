@@ -29,7 +29,7 @@ class BaseLayer : public Library::Layer
     void Render();
 
     private:
-        const float diffusionSamples = 50.0f;
+        const float diffusionSamples = 30.0f;
         const float windSamples = 1.0f;
         const uint32_t size = 1024;
 
